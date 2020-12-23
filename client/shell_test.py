@@ -19,7 +19,8 @@ while 1:
     user_input = prompt(u'SQL>',
                         history=FileHistory('history.txt'),
                         auto_suggest=AutoSuggestFromHistory(),
-                        completer=SQLCompleter()
+                        completer=SQLCompleter(),
+                        lexer=SqlLexer,
                         )
     # click.echo_via_pager(user_input)
     print(user_input)
