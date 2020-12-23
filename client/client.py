@@ -12,6 +12,9 @@ contacts = dict() # (email: username)
 @sio.event(namespace='/chat')
 def connect():
     print('\n' + '-' * 20, 'Connected to server', '-' * 20, '\n')
+    # notify server that client is online
+    data = dict(_from=my_contact, to=SERVER_NAME, message=ONLINE, file=None, msg_type=STATUS_UPDATE)
+    send(data)
     # start the background activity for sending data
     sio.start_background_task(send_text_data)
 

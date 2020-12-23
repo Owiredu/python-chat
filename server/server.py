@@ -34,10 +34,19 @@ def receive(sid, data):
     """
     Handle messages from clients
     """
-    print('\n', '-' * 30)
-    print('FROM:'+ data['_from'], '\nTO:', data['to'], '\nMESSAGE: ', data['message'], '\nFILE:', data['file'], '\nMSG_TYPE': data['msg_type'])
-    print('-' * 30, '\n')
-    # sio.emit('receive', 'Server response', namespace='/chat', room=sid)
+    if data['msg_type'] == STATUS_UPDATE:
+        # TODO: if the email already exists in the users table, update the status to online
+        # TODO: if the email doesn't exist, send secret code to complete registration
+        pass
+    if data['msg_type'] == REGISTER:
+        # register the client
+        register(sid, data)
+    if data['msg_type'] == NORMAL:
+        # TODO: forward the message to the addressed recipient
+        print('\n', '-' * 30)
+        print('FROM:'+ data['_from'], '\nTO:', data['to'], '\nMESSAGE: ', data['message'], '\nFILE:', data['file'], '\nMSG_TYPE': data['msg_type'])
+        print('-' * 30, '\n')
+        # sio.emit('receive', 'Server response', namespace='/chat', room=sid)
 
 
 def register(sid, data):
@@ -45,6 +54,7 @@ def register(sid, data):
     Register clients
     """
     try:
+        # TODO: check if the email already exists before registering the user
         # get and validate email address
         email_address = data['email'].lower().strip()
         if not is_email(email_address, diagnose=True, check_dns=True):
@@ -59,9 +69,9 @@ def register(sid, data):
         password = data['password']
         password_hash = db.get_password_hash(password)
         # submit the user's data
-        users_table.insert().values(email=email, username=username, password_hash=password_hash, status=ONLINE, stored_messages=0, sid=sid)
+        result = users_table.insert().values(email=email, username=username, password_hash=password_hash, status=ONLINE, stored_messages=0, sid=sid)
         # send confirmation message to user
-        data = dict(_from=SERVER_NAME, to='', message=f'Fatal error occurred. Try again.', file=None, msg_type=SUCCESS)
+        data = dict(_from=SERVER_NAME, to='', message=f'Registration successful', file=None, msg_type=SUCCESS)
         sio.emit('receive', data, namespace='/chat', room=sid)
     except Exception as e:
         print(e)
@@ -75,6 +85,7 @@ def disconnect(sid):
     """
     Handle disconnection of clients
     """
+    # TODO: change the user's status to offline if they exist in the database
     global num_of_clients_connected
     num_of_clients_connected -= 1
     print('\n' + '-' * 30)
