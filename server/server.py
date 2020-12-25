@@ -3,6 +3,7 @@ import re
 import socketio
 from pyisemail import is_email
 from constants import *
+from database import Database
 
 
 sio = socketio.Server() # socketio.Server(logger=True, engineio_logger=True)
@@ -44,7 +45,7 @@ def receive(sid, data):
     if data['msg_type'] == NORMAL:
         # TODO: forward the message to the addressed recipient
         print('\n', '-' * 30)
-        print('FROM:'+ data['_from'], '\nTO:', data['to'], '\nMESSAGE: ', data['message'], '\nFILE:', data['file'], '\nMSG_TYPE': data['msg_type'])
+        print('FROM:'+ data['_from'], '\nTO:', data['to'], '\nMESSAGE: ', data['message'], '\nFILE:', data['file'], '\nMSG_TYPE:', data['msg_type'])
         print('-' * 30, '\n')
         # sio.emit('receive', 'Server response', namespace='/chat', room=sid)
 
