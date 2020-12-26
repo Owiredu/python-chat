@@ -9,6 +9,9 @@ from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import FormattedText, HTML
+from prompt_toolkit.document import Document
+from pygments.lexers.python import PythonLexer
+from prompt_toolkit.lexers import PygmentsLexer
 from utils import get_current_datetime
 
 
@@ -33,8 +36,7 @@ def get_sender_message(buffer):
     """
     Get text from the message text area
     """
-    message = get_chat_text(sender_email, sender_alias, buffer.text)
-    chat_textarea.buffer.insert_text(message)
+    chat_textarea.document = chat_textarea.document.insert_after('\n\n' + buffer.text)
     # TODO: send the message to the recipient
     buffer.text = ''
     return True
@@ -44,9 +46,18 @@ def send_message_button_handler():
     """
     Sends the message to the recipient when the send button is clicked
     """
-    message = get_chat_text(sender_email, sender_alias, message_textarea.text)
-    chat_textarea.buffer.insert_text(HTML('<aaa fg="red">afdkjasflkjasfd</aaa>'))
-    # send the message to the recipient
+    existing_messages = chat_textarea.text
+    message_prefix =  f'({get_current_datetime()})-{sender_email}[{sender_username}]--' + '{\n' 
+    message_suffix = '\n}'
+    updated_messages = ''
+
+    if chat_textarea.document.line_count <= 1:
+        updated_messages = existing_messages + message_prefix + message_textarea.text + message_suffix
+    else:
+        updated_messages = existing_messages + '\n\n' + message_prefix + message_textarea.text + message_suffix
+
+    chat_textarea.document = Document(text=updated_messages, cursor_position=len(updated_messages))
+    # TODO: send the message to the recipient
     message_textarea.text = ''
 
 
@@ -56,7 +67,7 @@ def get_prefix_text(email, username):
     """
     formatted_text = FormattedText([
         ('ansicyan', sender_email),
-        ('#ffa500', '-'),
+        # ('#ffa500', '-'),
         ('#00aa00', '['),
         ('#ffff00', sender_username),
         ('#00aa00', ']'),
@@ -81,7 +92,7 @@ def get_message_line_prefix(x, y):
     Returns the prefix for the send message prompt
     """
     formatted_text = get_prefix_text(sender_email, sender_username)
-    if x == 0:
+    if x == 0 and y == 0:
         return formatted_text
     return ' ' * len(f'{sender_email}{sender_username}-[]# ')
 
@@ -104,6 +115,19 @@ def get_chat_text(email, username, message):
     return formatted_text
 
 
+def get_search_prompt(type):
+    """
+    Returns the prefix for the send message textarea
+    """
+    formatted_text = FormattedText([
+        ('#00aa00', '['),
+        ('#ffff00', f'{type} Search'),
+        ('#00aa00', ']'),
+        ('#00aa00', '# ')
+    ])
+    return formatted_text
+
+
 message_textarea = TextArea(accept_handler=get_sender_message, multiline=True, scrollbar=True, get_line_prefix=get_message_line_prefix)
 send_message_button = Button('Send', handler=send_message_button_handler)
 send_message_container = VSplit([
@@ -113,9 +137,14 @@ send_message_container = VSplit([
 ])
 send_message_frame = Frame(title=get_status_text(sender_alias, sender_connection_status), body=send_message_container)
 
-
-chat_textarea = TextArea(multiline=True, scrollbar=True, read_only=True)
-chat_frame = Frame(title=get_status_text(recipient_username, recipient_connection_status), body=chat_textarea)
+chat_search_field = SearchToolbar(text_if_not_searching=[("class:not-searching", "Press '/' to start searching.")], forward_search_prompt=get_search_prompt('Forward'), 
+                                    backward_search_prompt=get_search_prompt('Backward'), ignore_case=True)
+chat_textarea = TextArea(multiline=True, scrollbar=True, read_only=True, lexer=PygmentsLexer(PythonLexer), search_field=chat_search_field)
+chat_hsplit = HSplit([
+    chat_textarea,
+    chat_search_field, 
+])
+chat_frame = Frame(title=get_status_text(recipient_username, recipient_connection_status), body=chat_hsplit)
 
 chat_message_container = HSplit([
     chat_frame,
@@ -131,8 +160,17 @@ def _(event):
         get_app().layout.focus(send_message_button)
     elif get_app().layout.has_focus(send_message_button):
         get_app().layout.focus(message_textarea)
-    else:
+
+
+@kb.add('c-c')
+def _(event):
+    """
+    Press CTRL-C to switch between message area and chat area
+    """
+    if get_app().layout.has_focus(chat_textarea):
         get_app().layout.focus(message_textarea)
+    else:
+        get_app().layout.focus(chat_textarea)
 
 #################### GENERAL ####################
 
@@ -144,7 +182,17 @@ def _(event):
     event.app.exit()
 
 
+style = Style.from_dict(
+    {
+        "status": "reverse",
+        "status.position": "#aaaa00",
+        "status.key": "#ffaa00",
+        "not-searching": "#888888",
+    }
+)
+
+
 root_container = None
-layout = Layout(chat_message_container)
-app = Application(layout=layout, key_bindings=kb, full_screen=True, mouse_support=True, refresh_interval=0.5)
+layout = Layout(chat_message_container, focused_element=message_textarea)
+app = Application(layout=layout, key_bindings=kb, full_screen=True, mouse_support=True, refresh_interval=0.01, style=style)
 app.run()
