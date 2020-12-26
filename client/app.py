@@ -8,10 +8,9 @@ from prompt_toolkit.layout.containers import VSplit, HSplit
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.styles import Style
-from prompt_toolkit.formatted_text import FormattedText, HTML
+from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.document import Document
-from pygments.lexers.python import PythonLexer
-from prompt_toolkit.lexers import PygmentsLexer
+from prompt_toolkit.lexers import Lexer
 from utils import get_current_datetime
 
 
@@ -27,6 +26,9 @@ recipient_connection_status = "Offline"
 # get current datetime
 current_datetime = get_current_datetime()
 
+# get chat message indent
+chat_message_indent = ' ' * 5
+
 # key binding object
 kb = KeyBindings()
 
@@ -36,7 +38,19 @@ def get_sender_message(buffer):
     """
     Get text from the message text area
     """
-    chat_textarea.document = chat_textarea.document.insert_after('\n\n' + buffer.text)
+    existing_messages = chat_textarea.text
+    message_prefix =  f'({get_current_datetime()})-{sender_email}[{sender_username}]--' + '{\n' 
+    message_suffix = '\n}'
+    updated_messages = ''
+
+    new_message = '\n'.join([chat_message_indent + line for line in buffer.text.split('\n')])
+
+    if chat_textarea.document.line_count <= 1:
+        updated_messages = existing_messages + message_prefix + new_message + message_suffix
+    else:
+        updated_messages = existing_messages + '\n\n' + message_prefix + new_message + message_suffix
+
+    chat_textarea.document = Document(text=updated_messages, cursor_position=len(updated_messages))
     # TODO: send the message to the recipient
     buffer.text = ''
     return True
@@ -51,10 +65,12 @@ def send_message_button_handler():
     message_suffix = '\n}'
     updated_messages = ''
 
+    new_message = '\n'.join([chat_message_indent + line for line in message_textarea.text.split('\n')])
+
     if chat_textarea.document.line_count <= 1:
-        updated_messages = existing_messages + message_prefix + message_textarea.text + message_suffix
+        updated_messages = existing_messages + message_prefix + new_message + message_suffix
     else:
-        updated_messages = existing_messages + '\n\n' + message_prefix + message_textarea.text + message_suffix
+        updated_messages = existing_messages + '\n\n' + message_prefix + new_message + message_suffix
 
     chat_textarea.document = Document(text=updated_messages, cursor_position=len(updated_messages))
     # TODO: send the message to the recipient
@@ -94,30 +110,12 @@ def get_message_line_prefix(x, y):
     formatted_text = get_prefix_text(sender_email, sender_username)
     if x == 0 and y == 0:
         return formatted_text
-    return ' ' * len(f'{sender_email}{sender_username}-[]# ')
-
-
-def get_chat_text(email, username, message):
-    """
-    Returns the prefix for the send message textarea
-    """
-    formatted_text = FormattedText([
-        ('ansicyan', sender_email),
-        ('#ffa500', '-'),
-        ('#00aa00', '['),
-        ('#ffff00', sender_username),
-        ('#00aa00', ']'),
-        ('#00aa00', '-[ '),
-        ('', '\n'),
-        ('#ffffff', message),
-        ('', '\n\n')
-    ])
-    return formatted_text
+    return ' ' * len(f'{sender_email}{sender_username}[]# ')
 
 
 def get_search_prompt(type):
     """
-    Returns the prefix for the send message textarea
+    Returns the prefix for the search chat field
     """
     formatted_text = FormattedText([
         ('#00aa00', '['),
@@ -137,9 +135,51 @@ send_message_container = VSplit([
 ])
 send_message_frame = Frame(title=get_status_text(sender_alias, sender_connection_status), body=send_message_container)
 
+class ChatLexer(Lexer):
+
+    # def lex_document(self, document):
+
+    #     def get_line(lineno):
+    #         return [
+    #             ('ansicyan', sender_email),
+    #             ('#00aa00', '['),
+    #             ('#ffff00', sender_username),
+    #             ('#00aa00', ']'),
+    #             ('#00aa00', '--{'),
+    #             ('', '\n'),
+    #             ('#ffffff', document.text[:-1].split('{')[-1]),
+    #             ('#00aa00', '}'),
+    #             ('', '\n\n')
+    #         ]
+    def lex_document(self, document):
+
+        def get_line(lineno):
+            style = []
+            line = document.lines[lineno]
+            if line.startswith('(') and line.endswith(']--{'):
+                # style for message prefix. Eg. (2020-12-26 22:58:09)-nanakofiowiredu@gmail.com[Owiredu]--{
+                datetime_with_left_bracket, email_username_symbols = line.split(')-') # (2020-12-26 22:58:09 and nanakofiowiredu@gmail.com[Owiredu]--{
+                email, username = email_username_symbols[:-4].split('[') # nanakofiowiredu@gmail.com and Owiredu
+                style.append(('#ff0066', datetime_with_left_bracket + ')'))
+                style.append(('#00aa00', '-'))
+                style.append(('ansicyan', email))
+                style.append(('#00aa00', '['))
+                style.append(('#ffff00', username))
+                style.append(('#00aa00', ']'))
+                style.append(('orange', '--{'))
+            elif line.startswith(chat_message_indent):
+                # style for actual message
+                style.append(('#ffffff', line))
+            elif line.startswith('}'):
+                # style for message suffix
+                style.append(('orange', '}'))
+            return style
+
+        return get_line
+
 chat_search_field = SearchToolbar(text_if_not_searching=[("class:not-searching", "Press '/' to start searching.")], forward_search_prompt=get_search_prompt('Forward'), 
                                     backward_search_prompt=get_search_prompt('Backward'), ignore_case=True)
-chat_textarea = TextArea(multiline=True, scrollbar=True, read_only=True, lexer=PygmentsLexer(PythonLexer), search_field=chat_search_field)
+chat_textarea = TextArea(multiline=True, scrollbar=True, read_only=True, search_field=chat_search_field, lexer=ChatLexer()) # lexer=DynamicLexer(lambda: ChatLexer())
 chat_hsplit = HSplit([
     chat_textarea,
     chat_search_field, 
@@ -194,5 +234,5 @@ style = Style.from_dict(
 
 root_container = None
 layout = Layout(chat_message_container, focused_element=message_textarea)
-app = Application(layout=layout, key_bindings=kb, full_screen=True, mouse_support=True, refresh_interval=0.01, style=style)
+app = Application(layout=layout, key_bindings=kb, full_screen=True, mouse_support=True, refresh_interval=0.11, style=style)
 app.run()
