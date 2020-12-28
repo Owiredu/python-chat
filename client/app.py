@@ -18,55 +18,6 @@ import threading, time
 from constants import *
 import sys
 
-class TextInputDialog:
-    def __init__(self, title="", label_text="", completer=None):
-
-        def accept_text(buf):
-            get_app().layout.focus(message_textarea)
-            buf.complete_state = None
-            return True
-
-        def accept():
-            """
-            Respond to okay button press
-            """
-            message_textarea.text = self.text_area.text
-
-        def cancel():
-            """
-            Respond to cancel option
-            """
-            body.floats.remove(self.dialog)
-
-        self.text_area = TextArea(
-            multiline=False,
-            width=D(preferred=40),
-            accept_handler=accept_text,
-        )
-
-        ok_button = Button(text="OK", handler=accept)
-        cancel_button = Button(text="Cancel", handler=cancel)
-
-        self.dialog = Dialog(
-            title=title,
-            body=HSplit([Label(text=label_text), self.text_area]),
-            buttons=[ok_button, cancel_button],
-            width=D(preferred=80),
-            modal=True,
-        )
-
-    def __pt_container__(self):
-        return self.dialog
-
-
-# try:
-#     print(open('client/resources/banner.txt', 'r').read())
-#     # time.sleep(2)
-#     # d = TextInputDialog(title='Test', label_text='Enter name: ')
-#     # text = input_dialog(title='Input dialog example', text='Please type your name:').run()
-# except:
-#     pass
-
 
 sio = socketio.Client() # socketio.Client(logger=True, engineio_logger=True)
 server_url = 'http://localhost:5000'
@@ -160,9 +111,92 @@ def start_instant_messaging():
     sio.connect(server_url, namespaces=['/chat'])
     sio.wait()
 
-sio_thread = threading.Thread(target=start_instant_messaging, daemon=True)
-
 #--------------------- END CHAT BACKEND ---------------------#
+
+
+
+#--------------------- START REGISTRATION DIALOG ---------------------#
+
+reg_email = ''
+reg_username = ''
+password = ''
+verification_code = ''
+
+class RegistrationDialog:
+    def __init__(self):
+        self.title = 'Sign Up to sChat'
+        self.email_label = 'Email: '
+        self.username_label = 'Username: '
+        self.password_label = 'Password: '
+
+        def accept():
+            """
+            Respond to okay button press
+            """
+            message_textarea.text = self.text_area.text
+
+        def cancel():
+            """
+            Respond to cancel option
+            """
+            # hide dialog 
+            if registration_float in root_container.floats:
+                root_container.floats.remove(registration_float)
+            # disconnect from server and quit app
+            exit_app()
+            
+
+        self.email_textarea = TextArea(
+            multiline=False,
+            width=D(preferred=40),
+        )
+
+        self.username_textarea = TextArea(
+            multiline=False,
+            width=D(preferred=40),
+        )
+
+        self.password_textarea = TextArea(
+            multiline=False,
+            width=D(preferred=40),
+            password=True
+        )
+
+        email_hsplit = HSplit([Label(text=self.email_label), self.email_textarea])
+        username_hsplit = HSplit([Label(text=self.username_label), self.username_textarea])
+        password_hsplit = HSplit([Label(text=self.password_label), self.password_textarea])
+
+        input_area_hsplit = HSplit([email_hsplit, username_hsplit, password_hsplit])
+
+        ok_button = Button(text="Continue", handler=accept)
+        cancel_button = Button(text="Cancel", handler=cancel)
+
+        self.dialog = Dialog(
+            title=self.title,
+            body=input_area_hsplit,
+            buttons=[ok_button, cancel_button],
+            width=D(preferred=80),
+            modal=True,
+        )
+
+    def __pt_container__(self):
+        return self.dialog
+
+
+registration_dialog = RegistrationDialog()
+registration_float = Float(registration_dialog)
+
+def open_registration_dialog():
+    """
+    Opens the registration dialog
+    """
+    # show the registration dialog
+    root_container.floats.insert(0, registration_float)
+    get_app().layout.focus(registration_dialog)
+
+#--------------------- END REGISTRATION DIALOG ---------------------#
+
+
 
 #--------------------- START CHAT FRONTEND ---------------------#
 
@@ -329,10 +363,11 @@ def _(event):
     """
     Press TAB key to toggle focus between the message textarea and send button
     """
-    if get_app().layout.has_focus(message_textarea):
-        get_app().layout.focus(send_message_button)
-    elif get_app().layout.has_focus(send_message_button):
-        get_app().layout.focus(message_textarea)
+    if not get_app().layout.has_focus(registration_dialog):
+        if get_app().layout.has_focus(message_textarea):
+            get_app().layout.focus(send_message_button)
+        elif get_app().layout.has_focus(send_message_button):
+            get_app().layout.focus(message_textarea)
 
 
 @kb.add('c-c')
@@ -340,23 +375,32 @@ def _(event):
     """
     Press CTRL-C to switch between message area and chat area
     """
-    if get_app().layout.has_focus(chat_textarea):
-        get_app().layout.focus(message_textarea)
-    else:
-        get_app().layout.focus(chat_textarea)
+    if not get_app().layout.has_focus(registration_dialog):
+        if get_app().layout.has_focus(chat_textarea):
+            get_app().layout.focus(message_textarea)
+        else:
+            get_app().layout.focus(chat_textarea)
 
 #################### GENERAL ####################
+
+def exit_app():
+    """
+    Closes the connection and exits app
+    """
+    try:
+        sio.disconnect()
+    except:
+        pass
+    # exit application
+    get_app().exit()
+
 
 @kb.add('c-q')
 def _(event):
     """
     Press CTRL-Q to exit the user interface.
     """
-    try:
-        sio.disconnect()
-    except:
-        pass
-    event.app.exit()
+    exit_app()
 
 
 @kb.add('c-s')
@@ -372,8 +416,8 @@ def _(event):
     """
     Press CTRL-R open dialog
     """
-    root_container.floats.insert(0, d_float)
-    get_app().layout.focus(dialog)
+    root_container.floats.insert(0, registration_float)
+    get_app().layout.focus(registration_dialog)
 
 
 @kb.add('c-r')
@@ -381,8 +425,8 @@ def _(event):
     """
     Press CTRL-R open dialog
     """
-    if d_float in root_container.floats:
-        root_container.floats.remove(d_float)
+    if registration_float in root_container.floats:
+        root_container.floats.remove(registration_float)
         get_app().layout.focus(message_textarea)
 
 
@@ -396,9 +440,22 @@ style = Style.from_dict(
 )
 
 
+try:
+    print(open('client/resources/banner.txt', 'r').read())
+    time.sleep(2)
+    # d = TextInputDialog(title='Test', label_text='Enter name: ')
+    # text = input_dialog(title='Input dialog example', text='Please type your name:').run()
+except:
+    pass
+
+sio_thread = threading.Thread(target=start_instant_messaging, daemon=True)
+sio_thread.start()
+
+
 root_container = FloatContainer(content=chat_message_container, floats=[])
-layout = Layout(root_container, focused_element=message_textarea)
+layout = Layout(root_container, focused_element=registration_dialog)
 app = Application(layout=layout, key_bindings=kb, full_screen=True, mouse_support=True, refresh_interval=0.11, style=style)
+open_registration_dialog()  # TODO: check if registration file exists before showing dialog, implement continue action
 app.run()
 
 #--------------------- END CHAT FRONTEND ---------------------#
