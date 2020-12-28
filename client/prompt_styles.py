@@ -120,7 +120,7 @@ class SystemPrompt:
         print_formatted_text(self.message, style=self.style)
 
 
-sender_text = SenderPrompt('nk@gmail.com', 'Owiredu', 'Chat').get_prompt()
+# sender_text = SenderPrompt('nk@gmail.com', 'Owiredu', 'Chat').get_prompt()
 # print(sender_text)
 # ReceiptPrompt('nk@gmail.com', 'Owiredu', 'Tue, Jan 20, 2020 04:32 GMT', 'Hello world').print_text()
 # SystemPrompt('Tue, Jan 20, 2020 04:32 GMT', 'Connected to server', SUCCESS).print_text()

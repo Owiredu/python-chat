@@ -4,15 +4,77 @@ from prompt_toolkit.layout.dimension import D
 from prompt_toolkit.widgets import (TextArea, Label, MenuContainer, SearchToolbar, MenuItem, 
                                     FormattedTextToolbar, Checkbox, RadioList, Box, Dialog, 
                                     Frame, Button, SystemToolbar, VerticalLine, HorizontalLine)
-from prompt_toolkit.layout.containers import VSplit, HSplit
+from prompt_toolkit.layout.containers import VSplit, HSplit, Float, FloatContainer, Window
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.document import Document
 from prompt_toolkit.lexers import Lexer
+from prompt_toolkit.shortcuts import input_dialog
 from utils import get_current_datetime
+import socketio
+import threading, time
+from constants import *
+import sys
 
+class TextInputDialog:
+    def __init__(self, title="", label_text="", completer=None):
+
+        def accept_text(buf):
+            get_app().layout.focus(message_textarea)
+            buf.complete_state = None
+            return True
+
+        def accept():
+            """
+            Respond to okay button press
+            """
+            message_textarea.text = self.text_area.text
+
+        def cancel():
+            """
+            Respond to cancel option
+            """
+            body.floats.remove(self.dialog)
+
+        self.text_area = TextArea(
+            multiline=False,
+            width=D(preferred=40),
+            accept_handler=accept_text,
+        )
+
+        ok_button = Button(text="OK", handler=accept)
+        cancel_button = Button(text="Cancel", handler=cancel)
+
+        self.dialog = Dialog(
+            title=title,
+            body=HSplit([Label(text=label_text), self.text_area]),
+            buttons=[ok_button, cancel_button],
+            width=D(preferred=80),
+            modal=True,
+        )
+
+    def __pt_container__(self):
+        return self.dialog
+
+
+# try:
+#     print(open('client/resources/banner.txt', 'r').read())
+#     # time.sleep(2)
+#     # d = TextInputDialog(title='Test', label_text='Enter name: ')
+#     # text = input_dialog(title='Input dialog example', text='Please type your name:').run()
+# except:
+#     pass
+
+
+sio = socketio.Client() # socketio.Client(logger=True, engineio_logger=True)
+server_url = 'http://localhost:5000'
+my_contact = 'nkowiredu@gmail.com'
+contacts = dict() # (email: username)
+sender_message_type = NORMAL
+sender_message = ''
+messages_thread_status = MESSAGE_THREAD_DOWN
 
 # get users' data
 sender_username = "Owiredu"
@@ -20,7 +82,6 @@ sender_alias = "You"
 sender_email = "nanakofiowiredu@gmail.com"
 recipient_username = "Samson"
 recipient_email = "samsom@yahoo.com"
-sender_connection_status = "Online"
 recipient_connection_status = "Offline"
 
 # get current datetime
@@ -29,8 +90,81 @@ current_datetime = get_current_datetime()
 # get chat message indent
 chat_message_indent = ' ' * 5
 
+# get app name
+app_name = 'sChat'
+
 # key binding object
 kb = KeyBindings()
+
+#--------------------- START CHAT BACKEND ---------------------#
+
+@sio.event(namespace='/chat')
+def connect():
+    send_message_frame.title = get_status_text('You', 'Online')
+    # notify server that client is online
+    global messages_thread_status
+    if messages_thread_status == MESSAGE_THREAD_DOWN:
+        data = dict(_from=my_contact, to=SERVER_NAME, message=ONLINE, file=None, msg_type=STATUS_UPDATE)
+        send(data)
+        # start the background activity for sending data
+        sio.start_background_task(send_text_data)
+        messages_thread_status = MESSAGE_THREAD_UP
+
+
+@sio.event(namespace='/chat')
+def connect_error(error_msg):
+    send_message_frame.title = get_status_text('You', 'Offline')
+
+
+@sio.event(namespace='/chat')
+def disconnect():
+    send_message_frame.title = get_status_text('You', 'Offline')
+
+
+@sio.event(namespace='/chat')
+def send(data):
+    sio.emit('receive', data, namespace='/chat')
+
+
+def send_text_data():
+    while True:
+        #data = dict() # (from, to, text, file[dict] = [filename, file type, file data])
+        data = dict(_from=my_contact, to='jason@gmail.com', message='', file=None, msg_type=NORMAL)
+        global sender_message, sender_message_type
+        data['msg_type'] = sender_message_type
+        data['message'] = sender_message
+        if not data['message'] == '':
+            # disconnect from server when quitting
+            if data['message'].strip().lower() == '/quit':
+                sio.disconnect()
+                break
+            # send the data to the recipient
+            send(data)
+            # clear the sender message
+            sender_message = ''
+
+
+@sio.event(namespace='/chat')
+def receive(data):
+    if data['_from'] == SERVER_NAME:
+        # handle server messages
+        pass
+    else:
+        print(f"{data['_from']}: {data['message']}")
+
+
+def start_instant_messaging():
+    """
+    Connects to the chat server
+    """
+    sio.connect(server_url, namespaces=['/chat'])
+    sio.wait()
+
+sio_thread = threading.Thread(target=start_instant_messaging, daemon=True)
+
+#--------------------- END CHAT BACKEND ---------------------#
+
+#--------------------- START CHAT FRONTEND ---------------------#
 
 #################### SEND/RECIEVE MESSAGE WIDGETS ####################
 
@@ -43,16 +177,21 @@ def get_sender_message(buffer):
     message_suffix = '\n}'
     updated_messages = ''
 
-    new_message = '\n'.join([chat_message_indent + line for line in buffer.text.split('\n')])
+    original_message = buffer.text
+    if original_message.strip() != '':
+        new_message = '\n'.join([chat_message_indent + line for line in original_message.split('\n')])
 
-    if chat_textarea.document.line_count <= 1:
-        updated_messages = existing_messages + message_prefix + new_message + message_suffix
-    else:
-        updated_messages = existing_messages + '\n\n' + message_prefix + new_message + message_suffix
+        if chat_textarea.document.line_count <= 1:
+            updated_messages = existing_messages + message_prefix + new_message + message_suffix
+        else:
+            updated_messages = existing_messages + '\n\n' + message_prefix + new_message + message_suffix
 
-    chat_textarea.document = Document(text=updated_messages, cursor_position=len(updated_messages))
-    # TODO: send the message to the recipient
-    buffer.text = ''
+        chat_textarea.document = Document(text=updated_messages, cursor_position=len(updated_messages))
+        buffer.text = ''
+        # send the message to the recipient
+        global sender_message, sender_message_type
+        sender_message_type = NORMAL
+        sender_message = original_message
     return True
 
 
@@ -65,16 +204,21 @@ def send_message_button_handler():
     message_suffix = '\n}'
     updated_messages = ''
 
-    new_message = '\n'.join([chat_message_indent + line for line in message_textarea.text.split('\n')])
+    original_message = message_textarea.text
+    if original_message.strip() != '':
+        new_message = '\n'.join([chat_message_indent + line for line in original_message.split('\n')])
 
-    if chat_textarea.document.line_count <= 1:
-        updated_messages = existing_messages + message_prefix + new_message + message_suffix
-    else:
-        updated_messages = existing_messages + '\n\n' + message_prefix + new_message + message_suffix
+        if chat_textarea.document.line_count <= 1:
+            updated_messages = existing_messages + message_prefix + new_message + message_suffix
+        else:
+            updated_messages = existing_messages + '\n\n' + message_prefix + new_message + message_suffix
 
-    chat_textarea.document = Document(text=updated_messages, cursor_position=len(updated_messages))
-    # TODO: send the message to the recipient
-    message_textarea.text = ''
+        chat_textarea.document = Document(text=updated_messages, cursor_position=len(updated_messages))
+        message_textarea.text = ''
+        # send the message to the recipient
+        global sender_message, sender_message_type
+        sender_message_type = NORMAL
+        sender_message = original_message
 
 
 def get_prefix_text(email, username):
@@ -133,24 +277,13 @@ send_message_container = VSplit([
     VerticalLine(),
     send_message_button,
 ])
-send_message_frame = Frame(title=get_status_text(sender_alias, sender_connection_status), body=send_message_container)
+send_message_frame = Frame(title=get_status_text(sender_alias, 'Offline'), body=send_message_container)
 
 class ChatLexer(Lexer):
+    """
+    This is controls syntax highlighting in the chat area
+    """
 
-    # def lex_document(self, document):
-
-    #     def get_line(lineno):
-    #         return [
-    #             ('ansicyan', sender_email),
-    #             ('#00aa00', '['),
-    #             ('#ffff00', sender_username),
-    #             ('#00aa00', ']'),
-    #             ('#00aa00', '--{'),
-    #             ('', '\n'),
-    #             ('#ffffff', document.text[:-1].split('{')[-1]),
-    #             ('#00aa00', '}'),
-    #             ('', '\n\n')
-    #         ]
     def lex_document(self, document):
 
         def get_line(lineno):
@@ -219,7 +352,38 @@ def _(event):
     """
     Press CTRL-Q to exit the user interface.
     """
+    try:
+        sio.disconnect()
+    except:
+        pass
     event.app.exit()
+
+
+@kb.add('c-s')
+def _(event):
+    """
+    Press CTRL-S to connect to the server
+    """
+    sio_thread.start()
+
+
+@kb.add('c-a')
+def _(event):
+    """
+    Press CTRL-R open dialog
+    """
+    root_container.floats.insert(0, d_float)
+    get_app().layout.focus(dialog)
+
+
+@kb.add('c-r')
+def _(event):
+    """
+    Press CTRL-R open dialog
+    """
+    if d_float in root_container.floats:
+        root_container.floats.remove(d_float)
+        get_app().layout.focus(message_textarea)
 
 
 style = Style.from_dict(
@@ -232,7 +396,9 @@ style = Style.from_dict(
 )
 
 
-root_container = None
-layout = Layout(chat_message_container, focused_element=message_textarea)
+root_container = FloatContainer(content=chat_message_container, floats=[])
+layout = Layout(root_container, focused_element=message_textarea)
 app = Application(layout=layout, key_bindings=kb, full_screen=True, mouse_support=True, refresh_interval=0.11, style=style)
 app.run()
+
+#--------------------- END CHAT FRONTEND ---------------------#

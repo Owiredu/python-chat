@@ -38,14 +38,16 @@ def receive(sid, data):
     if data['msg_type'] == STATUS_UPDATE:
         # TODO: if the email already exists in the users table, update the status to online
         # TODO: if the email doesn't exist, send secret code to complete registration
-        pass
+        print('\n', '-' * 30)
+        print('FROM: '+ data['_from'], '\nTO:', data['to'], '\nMESSAGE: ', data['message'], '\nFILE:', data['file'], '\nMSG_TYPE:', data['msg_type'])
+        print('-' * 30, '\n')
     if data['msg_type'] == REGISTER:
         # register the client
         register(sid, data)
     if data['msg_type'] == NORMAL:
         # TODO: forward the message to the addressed recipient
         print('\n', '-' * 30)
-        print('FROM:'+ data['_from'], '\nTO:', data['to'], '\nMESSAGE: ', data['message'], '\nFILE:', data['file'], '\nMSG_TYPE:', data['msg_type'])
+        print('FROM: '+ data['_from'], '\nTO:', data['to'], '\nMESSAGE: ', data['message'], '\nFILE:', data['file'], '\nMSG_TYPE:', data['msg_type'])
         print('-' * 30, '\n')
         # sio.emit('receive', 'Server response', namespace='/chat', room=sid)
 

@@ -1,6 +1,8 @@
 # for connection status values
 ONLINE = 1 # signifies the the client/sender is online
 OFFLINE = 0 # signifies that the client/sender is offline
+MESSAGE_THREAD_UP = 6 # signifies that the messaging thread has already started
+MESSAGE_THREAD_DOWN = -6
 
 # for message types
 SUCCESS = 2 # for success notifications
