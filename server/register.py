@@ -12,9 +12,10 @@ app = socketio.WSGIApp(sio, static_files={
     '/': {'content_type': 'text/html', 'filename': 'server/templates/index.html'}
 })
 # get table objects
-db = Database()
-db_conn = db.db_conn
-users_table = db.table('users')
+db = Database() # database object
+db_conn = db.db_conn # database connection object
+users_table = db.table('users') # users table object
+
 # track number of user connected
 num_of_clients_connected = 0
 
