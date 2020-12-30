@@ -7,7 +7,7 @@ from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.styles import Style
-import socketio, threading, re, sys, os
+import socketio, threading, re, sys, os, time
 from pyisemail import is_email
 from constants import *
 
@@ -66,26 +66,60 @@ def send_text_data():
     while True:
         sio.sleep(0)
         global registration_data, server_connection_status
-        if registration_data['_from'] != '' and registration_data['username'] != '' and registration_data['password'] != '' and registration_data['msg_type'] == REGISTER:
-            if server_connection_status == ONLINE:
-                # show submission message
-                registration_dialog.error_label.text = registration_dialog.get_loading_message('Submitting data ...')
-                # send the data to the recipient
-                send(registration_data)
-            else:
-                # show error message
-                registration_dialog.error_label.text = registration_dialog.get_error_message('You are not connected to the server')
-            # clear the sender message
-            registration_data = dict(_from='', to=SERVER_NAME, username='', password='', activation_code='', file='', msg_type=REGISTER)
+        if registration_float in root_container.floats:
+            if registration_dialog.ok_button.text == 'Submit':
+                if registration_data['_from'] != '' and registration_data['username'] != '' and registration_data['password'] != '' and registration_data['msg_type'] == REGISTER:
+                    if server_connection_status == ONLINE:
+                        # show submission message
+                        registration_dialog.error_label.text = registration_dialog.get_loading_message('Submitting data ...')
+                        # send the data to the recipient
+                        send(registration_data)
+                        # disable the registration form widgets
+                        registration_dialog.enable_form(False)
+                        # clear the sender message
+                        registration_data = dict(_from='', to=SERVER_NAME, username='', password='', activation_code='', file='', msg_type=REGISTER)
+                    else:
+                        # show error message
+                        registration_dialog.error_label.text = registration_dialog.get_error_message('Offline! Connecting to server before submission ...')
+        elif activation_float in root_container.floats:
+            if activation_dialog.ok_button.text == 'Submit':
+                if registration_data['activation_code'] != '' and registration_data['msg_type'] == ACTIVATION:
+                    if server_connection_status == ONLINE:
+                        # show submission message
+                        activation_dialog.error_label.text = activation_dialog.get_loading_message('Activating account ...')
+                        # send the data to the recipient
+                        send(registration_data)
+                        # disable the registration form widgets
+                        activation_dialog.enable_form(False)
+                        # clear the sender message
+                        registration_data = dict(_from='', to=SERVER_NAME, username='', password='', activation_code='', file='', msg_type=ACTIVATION)
+                    else:
+                        # show error message
+                        activation_dialog.error_label.text = activation_dialog.get_error_message('Offline! Connecting to server before activation ...')
+
 
 
 @sio.event(namespace='/register')
 def receive(data):
     if data['_from'] == SERVER_NAME:
-        if data['msg_type'] == ERROR:
-            registration_dialog.error_label.text = registration_dialog.get_error_message(data['message'])
-        else:
-            registration_dialog.error_label.text = registration_dialog.get_success_message(data['message'])
+        if registration_float in root_container.floats:
+            if data['msg_type'] == ERROR:
+                registration_dialog.error_label.text = registration_dialog.get_error_message(data['message'])
+                registration_dialog.ok_button.text = 'Submit'
+                registration_dialog.enable_form(True)
+            else:
+                registration_dialog.error_label.text = registration_dialog.get_success_message(data['message'])
+                registration_dialog.ok_button.text = 'Continue'
+                registration_dialog.enable_form(True)
+        elif activation_float in root_container.floats:
+            if data['msg_type'] == ERROR:
+                activation_dialog.error_label.text = activation_dialog.get_error_message(data['message'])
+                activation_dialog.ok_button.text = 'Submit'
+                activation_dialog.enable_form(True)
+            else:
+                activation_dialog.error_label.text = activation_dialog.get_success_message(data['message'])
+                activation_dialog.ok_button.text = 'Continue'
+                activation_dialog.enable_form(True)
 
 
 def connect_to_server():
@@ -94,10 +128,11 @@ def connect_to_server():
     """
     try:
         sio.connect(server_url, namespaces=['/register'])
+        sio.wait()
     except:
-        # show error message
-        registration_dialog.error_label.text = registration_dialog.get_error_message('Not connected to server. Use Ctrl + C to connect')
-    sio.wait()
+        registration_dialog.error_label.text = registration_dialog.get_loading_message('Connecting to server ...')
+        time.sleep(1)
+        connect_to_server()
 
 
 def start_registration_thread():
@@ -130,58 +165,13 @@ def reset_registration_data():
 
 
 class RegistrationDialog:
+
     def __init__(self):
         self.title = 'Sign Up to sChat'
         self.email_label = Label(text='Email: ')
         self.username_label = Label(text='Username: ')
         self.password_label = Label(text='Password: ')
-        self.space_label = Label(text='')
-
-        registration_data['msg_type'] = REGISTER
-
-        def accept():
-            """
-            Respond to okay button press
-            """
-            # reset registration data dict
-            reset_registration_data()
-
-            # get the registration data
-            reg_email = self.email_textarea.text.strip()
-            reg_username = self.username_textarea.text
-            reg_password = self.password_textarea.text
-
-            # validate email
-            if is_email(reg_email):
-                registration_data['_from'] = reg_email
-            else:
-                self.error_label.text = self.get_error_message('Invalid email')
-
-            # validate username
-            if len(reg_username) >= 4:
-                if not re.search(r'[^\w\_]+', reg_username):
-                    registration_data['username'] = reg_username
-                else:
-                    self.error_label.text = self.get_error_message('User must contain only alphabets and numbers')
-            else:
-                self.error_label.text = self.get_error_message('Username must be at least 4 characters long')
-
-            # validate password
-            if re.search(PASSWORD_REGEX_STRING, reg_password):
-                registration_data['password'] = reg_password
-            else:
-                self.error_label.text = self.get_error_message('Invalid password')
-
-
-        def cancel():
-            """
-            Respond to cancel option
-            """
-            # hide dialog 
-            close_registration_dialog()
-            # disconnect from server and quit app
-            exit_app()
-            
+        self.space_label = Label(text='')           
 
         self.email_textarea = TextArea(
             multiline=False,
@@ -210,16 +200,65 @@ class RegistrationDialog:
 
         input_area_hsplit = HSplit([email_hsplit, username_hsplit, password_hsplit, self.space_label, self.error_label])
 
-        ok_button = Button(text="Continue", handler=accept)
-        cancel_button = Button(text="Cancel", handler=cancel)
+        self.ok_button = Button(text="Submit", handler=self.accept)
+        self.cancel_button = Button(text="Cancel", handler=self.cancel)
 
         self.dialog = Dialog(
             title=self.title,
             body=input_area_hsplit,
-            buttons=[ok_button, cancel_button],
+            buttons=[self.ok_button, self.cancel_button],
             width=D(preferred=80),
             modal=True,
         )
+
+    def accept(self):
+        """
+        Respond to okay button press
+        """
+        # reset registration data dict
+        reset_registration_data()
+        if self.ok_button.text == 'Submit':
+            global registration_data
+            registration_data['msg_type'] = REGISTER 
+
+            # get the registration data
+            reg_email = self.email_textarea.text.strip()
+            reg_username = self.username_textarea.text
+            reg_password = self.password_textarea.text
+
+            # validate email
+            if is_email(reg_email):
+                registration_data['_from'] = reg_email
+            else:
+                self.error_label.text = self.get_error_message('Invalid email')
+
+            # validate username
+            if len(reg_username) >= 4:
+                if not re.search(r'[^\w\_]+', reg_username):
+                    registration_data['username'] = reg_username
+                else:
+                    self.error_label.text = self.get_error_message('User must contain only alphabets and numbers')
+            else:
+                self.error_label.text = self.get_error_message('Username must be at least 4 characters long')
+
+            # validate password
+            if re.search(PASSWORD_REGEX_STRING, reg_password):
+                registration_data['password'] = reg_password
+            else:
+                self.error_label.text = self.get_error_message('Invalid password')
+        else:
+            # close the registration dialog and open the activation code dialog
+            close_registration_dialog()
+            open_activation_dialog()
+
+    def cancel(self):
+        """
+        Respond to cancel option
+        """
+        # hide dialog 
+        close_registration_dialog()
+        # disconnect from server and quit app
+        exit_app()
 
     def get_error_message(self, message):
         return FormattedText([('bg:red fg:white', message)])
@@ -229,6 +268,16 @@ class RegistrationDialog:
 
     def get_success_message(self, message):
         return FormattedText([('bg:green fg:white', message)])
+
+    def enable_form(self, bool_val):
+        self.email_textarea.control.focusable = lambda: bool_val
+        self.username_textarea.control.focusable = lambda: bool_val
+        self.password_textarea.control.focusable = lambda: bool_val
+        self.ok_button.control.focusable = lambda: bool_val
+        if bool_val:
+            get_app().layout.focus(self.ok_button)
+        else:
+            get_app().layout.focus(self.cancel_button)
 
     def __pt_container__(self):
         return self.dialog
@@ -255,6 +304,122 @@ def close_registration_dialog():
         root_container.floats.remove(registration_float)
 
 #--------------------- END REGISTRATION DIALOG ---------------------#
+
+
+#--------------------- START ACTIVATION DIALOG ---------------------#
+
+reg_activation_code = ''
+
+def reset_activation_code():
+    global registration_data
+    registration_data['activation_code'] = ''
+
+class ActivationDialog:
+
+    def __init__(self):
+        self.title = 'Activate sChat Account'
+        self.code_sent_label = Label(text='Check your email for activation code')
+        self.activation_code_label = Label(text='Enter activation code: ')     
+        self.space_label = Label(text='')      
+
+        self.activation_code_textarea = TextArea(
+            multiline=False,
+            width=D(preferred=40),
+        )
+
+        self.error_label = Label(
+            text='',
+            width=D(preferred=40),
+        )
+
+        activation_code_hsplit = HSplit([self.code_sent_label, self.space_label, self.activation_code_label, self.activation_code_textarea])
+
+        input_area_hsplit = HSplit([activation_code_hsplit, self.space_label, self.error_label])
+
+        self.ok_button = Button(text="Submit", handler=self.accept)
+        self.cancel_button = Button(text="Cancel", handler=self.cancel)
+
+        self.dialog = Dialog(
+            title=self.title,
+            body=input_area_hsplit,
+            buttons=[self.ok_button, self.cancel_button],
+            width=D(preferred=80),
+            modal=True,
+        )
+
+    def accept(self):
+        """
+        Respond to okay button press
+        """
+        reset_activation_code()
+
+        if self.ok_button.text == 'Submit':
+            global registration_data
+            registration_data['msg_type'] = ACTIVATION  
+
+            # get the activation code
+            reg_activation_code = self.activation_code_textarea.text.strip()
+
+            # validate activation code as a 6-digit string
+            if re.search(r'^[\d]{6}$', reg_activation_code):
+                registration_data['activation_code'] = reg_activation_code
+            else:
+                self.error_label.text = self.get_error_message('Invalid activation code')
+        else:
+            # exit activation dialog and app when continue is pressed
+            self.cancel()
+
+    def cancel(self):
+        """
+        Respond to cancel option
+        """
+        # hide dialog 
+        close_activation_dialog()
+        # disconnect from server and quit app
+        exit_app()
+
+    def get_error_message(self, message):
+        return FormattedText([('bg:red fg:white', message)])
+
+    def get_loading_message(self, message):
+        return FormattedText([('bg:orange fg:white', message)])
+
+    def get_success_message(self, message):
+        return FormattedText([('bg:green fg:white', message)])
+
+    def enable_form(self, bool_val):
+        self.activation_code_textarea.control.focusable = lambda: bool_val
+        self.ok_button.control.focusable = lambda: bool_val
+        if bool_val:
+            get_app().layout.focus(self.ok_button)
+        else:
+            get_app().layout.focus(self.cancel_button)
+
+    def __pt_container__(self):
+        return self.dialog
+
+
+activation_dialog = ActivationDialog()
+activation_float = Float(activation_dialog)
+
+
+def open_activation_dialog():
+    """
+    Opens the registration dialog
+    """
+    # show the registration dialog
+    root_container.floats.insert(0, activation_float)
+    get_app().layout.focus(activation_dialog)
+
+
+def close_activation_dialog():
+    """
+    Closes the registration dialog
+    """
+    if activation_float in root_container.floats:
+        root_container.floats.remove(activation_float)
+
+#--------------------- END ACTIVATION DIALOG ---------------------#
 
 def get_status_text(label, status):
     """
@@ -285,16 +450,6 @@ def _(event):
     Press CTRL-Q to exit the user interface.
     """
     exit_app()
-
-
-@kb.add('c-c')
-def _(event):
-    """
-    Press CTRL-C to connect to the server
-    """
-    if messages_thread_status == MESSAGE_THREAD_DOWN:
-        registration_dialog.error_label.text = registration_dialog.get_loading_message('Connecting to server ...')
-        start_registration_thread()
 
 
 # start the registration thread

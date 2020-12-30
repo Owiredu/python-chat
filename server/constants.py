@@ -20,3 +20,6 @@ CHAT_PORT = '9002'
 
 # password regex string
 PASSWORD_REGEX_STRING = "(?=^.{8,}$)(?=.*\d)(?=.*[!@#$%^&*]+)(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$"
+
+# activation code length
+ACTIVATION_CODE_LENGTH = 6

@@ -1,5 +1,6 @@
 from datetime import datetime
 import string, random
+from constants import *
 
 
 def get_current_datetime():
@@ -9,7 +10,7 @@ def get_current_datetime():
     return str(datetime.now()).split('.')[0]
 
 
-def generate_activation_code(length=6):
+def generate_activation_code(length=ACTIVATION_CODE_LENGTH):
     """
     Generates a 6-digit secret code
     """

@@ -1,8 +1,8 @@
 # for connection status values
 ONLINE = 1 # signifies the the client/sender is online
 OFFLINE = 0 # signifies that the client/sender is offline
-MESSAGE_THREAD_UP = 6 # signifies that the messaging thread has already started
-MESSAGE_THREAD_DOWN = -6
+MESSAGE_THREAD_UP = 8 # signifies that the messaging thread has already started
+MESSAGE_THREAD_DOWN = -8
 
 # for message types
 SUCCESS = 2 # for success notifications
@@ -22,3 +22,6 @@ CHAT_PORT = '9002'
 
 # password regex string
 PASSWORD_REGEX_STRING = "(?=^.{8,}$)(?=.*\d)(?=.*[!@#$%^&*]+)(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$"
+
+# activation code length
+ACTIVATION_CODE_LENGTH = 6

@@ -43,7 +43,51 @@ def receive(sid, data):
         register(sid, data)
         # print(data)
     if data['msg_type'] == ACTIVATION:
-        print(data)
+        # activate account
+        activate(sid, data)
+
+def activate(sid, data):
+    """
+    Activates an account
+    """
+    try:
+        # get and validate the activation code
+        activation_code = data['activation_code'].strip()
+        if not re.search(r'^[\d]{6}$', activation_code):
+            data = dict(_from=SERVER_NAME, to='', message='Invalid activation code', file='', msg_type=ERROR)
+            sio.emit('receive', data, namespace='/register', room=sid)
+            return
+        # updated the activation status
+        existing_session_query = users_table.select().where(users_table.c.sid==sid)
+        existing_session = db_conn.execute(existing_session_query).fetchone()
+        # if the session exists, activate the account if not activated
+        # if the session does not exist, send activation failed message and ask for registration
+        if existing_session:
+            if existing_session[-1] == 0: # check activation status
+                if existing_session[-2] == activation_code: # check activation code
+                    update_activation_status_query = users_table.update().where(users_table.c.sid==sid).values(activation_status=1)
+                    db_conn.execute(update_activation_status_query)
+                else:
+                    data = dict(_from=SERVER_NAME, to='', message='Wrong activation code', file='', msg_type=ERROR)
+                    sio.emit('receive', data, namespace='/register', room=sid)
+                    return
+            else:
+                data = dict(_from=SERVER_NAME, to='', message='Account is already active. Login instead.', file='', msg_type=SUCCESS)
+                sio.emit('receive', data, namespace='/register', room=sid)
+                return
+        else:
+            # send activation failed since session does not exist
+            data = dict(_from=SERVER_NAME, to='', message='Activation failed! Redo registration.', file='', msg_type=ERROR)
+            sio.emit('receive', data, namespace='/register', room=sid)
+            return
+        # send confirmation message to user
+        data = dict(_from=SERVER_NAME, to='', message=f'Activation successful', file='', msg_type=SUCCESS)
+        sio.emit('receive', data, namespace='/register', room=sid)
+    except Exception as e:
+        print(e)
+        # send error message to the client
+        data = dict(_from=SERVER_NAME, to='', message=f'Fatal error occurred. Try again.', file='', msg_type=ERROR)
+        sio.emit('receive', data, namespace='/register', room=sid)
 
 
 def register(sid, data):
@@ -78,7 +122,7 @@ def register(sid, data):
         existing_user = db_conn.execute(existing_user_query).fetchone()
         if existing_user:
             if existing_user[-1] == 0:
-                update_user_query = users_table.update().where(users_table.c.email==email_address).values(email=email_address, username=username, password_hash=password_hash, activation_code=activation_code)
+                update_user_query = users_table.update().where(users_table.c.email==email_address).values(email=email_address, username=username, password_hash=password_hash, sid=sid, activation_code=activation_code)
                 db_conn.execute(update_user_query)
             else:
                 data = dict(_from=SERVER_NAME, to='', message='Account already exists. Use another email', file='', msg_type=ERROR)
@@ -86,7 +130,7 @@ def register(sid, data):
                 return
         else:
             # submit the user's registration data
-            insert_user_query = users_table.insert().values(email=email_address, username=username, password_hash=password_hash, activation_code=activation_code)
+            insert_user_query = users_table.insert().values(email=email_address, username=username, password_hash=password_hash, sid=sid, activation_code=activation_code)
             db_conn.execute(insert_user_query)
         # send confirmation message to user
         data = dict(_from=SERVER_NAME, to='', message=f'Submission successful', file='', msg_type=SUCCESS)

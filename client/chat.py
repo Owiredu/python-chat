@@ -21,12 +21,15 @@ import sys
 
 
 sio = socketio.Client() # socketio.Client(logger=True, engineio_logger=True)
-server_url = 'http://localhost:5000'
+server_url = 'http://localhost:' + CHAT_PORT
 my_contact = 'nkowiredu@gmail.com'
 contacts = dict() # (email: username)
 sender_message_type = NORMAL
 sender_message = ''
 messages_thread_status = MESSAGE_THREAD_DOWN
+
+# track the server connection status
+server_connection_status = OFFLINE
 
 # get users' data
 sender_username = "Owiredu"
@@ -52,9 +55,10 @@ kb = KeyBindings()
 
 @sio.event(namespace='/chat')
 def connect():
-    send_message_frame.title = get_status_text('You', 'Online')
+    global messages_thread_status, server_connection_status
+    server_connection_status = ONLINE
     # notify server that client is online
-    global messages_thread_status
+    send_message_frame.title = get_status_text('You', 'Online')
     if messages_thread_status == MESSAGE_THREAD_DOWN:
         data = dict(_from=my_contact, to=SERVER_NAME, message=ONLINE, file='', msg_type=STATUS_UPDATE)
         send(data)
@@ -70,6 +74,8 @@ def connect_error(error_msg):
 
 @sio.event(namespace='/chat')
 def disconnect():
+    global server_connection_status
+    server_connection_status = OFFLINE
     send_message_frame.title = get_status_text('You', 'Offline')
 
 
@@ -102,12 +108,29 @@ def receive(data):
         print(f"{data['_from']}: {data['message']}")
 
 
-def start_instant_messaging():
+def connect_to_server():
     """
     Connects to the chat server
     """
-    sio.connect(server_url, namespaces=['/chat'])
-    sio.wait()
+    try:
+        sio.connect(server_url, namespaces=['/chat'])
+        sio.wait()
+    except:
+        time.sleep(1)
+        connect_to_server()
+
+
+def start_messaging_thread():
+    """
+    Starts the messaging thread
+    """
+    try:
+        # print(open('client/resources/banner.txt', 'r').read())
+        # time.sleep(2)
+        sio_thread = threading.Thread(target=connect_to_server, daemon=True)
+        sio_thread.start()
+    except:
+        pass
 
 #--------------------- END CHAT BACKEND ---------------------#
 
@@ -120,26 +143,27 @@ def get_sender_message(buffer):
     """
     Get text from the message text area
     """
-    existing_messages = chat_textarea.text
-    message_prefix =  f'({get_current_datetime()}){sender_email}[{sender_username}]' + '\n' 
-    message_suffix = '\n'
-    updated_messages = ''
+    if messages_thread_status == MESSAGE_THREAD_UP:
+        existing_messages = chat_textarea.text
+        message_prefix =  f'({get_current_datetime()}){sender_email}[{sender_username}]' + '\n' 
+        message_suffix = '\n'
+        updated_messages = ''
 
-    original_message = buffer.text
-    if original_message.strip() != '':
-        new_message = '\n'.join([chat_message_indent + line for line in original_message.split('\n')])
+        original_message = buffer.text
+        if original_message.strip() != '':
+            new_message = '\n'.join([chat_message_indent + line for line in original_message.split('\n')])
 
-        if chat_textarea.document.line_count <= 1:
-            updated_messages = existing_messages + message_prefix + new_message + message_suffix
-        else:
-            updated_messages = existing_messages + '\n\n' + message_prefix + new_message + message_suffix
+            if chat_textarea.document.line_count <= 1:
+                updated_messages = existing_messages + message_prefix + new_message + message_suffix
+            else:
+                updated_messages = existing_messages + '\n\n' + message_prefix + new_message + message_suffix
 
-        chat_textarea.document = Document(text=updated_messages, cursor_position=len(updated_messages))
-        buffer.text = ''
-        # send the message to the recipient
-        global sender_message, sender_message_type
-        sender_message_type = NORMAL
-        sender_message = original_message
+            chat_textarea.document = Document(text=updated_messages, cursor_position=len(updated_messages))
+            buffer.text = ''
+            # send the message to the recipient
+            global sender_message, sender_message_type
+            sender_message_type = NORMAL
+            sender_message = original_message
     return True
 
 
@@ -147,26 +171,27 @@ def send_message_button_handler():
     """
     Sends the message to the recipient when the send button is clicked
     """
-    existing_messages = chat_textarea.text
-    message_prefix =  f'({get_current_datetime()}){sender_email}[{sender_username}]' + '\n' 
-    message_suffix = '\n'
-    updated_messages = ''
+    if messages_thread_status == MESSAGE_THREAD_UP:
+        existing_messages = chat_textarea.text
+        message_prefix =  f'({get_current_datetime()}){sender_email}[{sender_username}]' + '\n' 
+        message_suffix = '\n'
+        updated_messages = ''
 
-    original_message = message_textarea.text
-    if original_message.strip() != '':
-        new_message = '\n'.join([chat_message_indent + line for line in original_message.split('\n')])
+        original_message = message_textarea.text
+        if original_message.strip() != '':
+            new_message = '\n'.join([chat_message_indent + line for line in original_message.split('\n')])
 
-        if chat_textarea.document.line_count <= 1:
-            updated_messages = existing_messages + message_prefix + new_message + message_suffix
-        else:
-            updated_messages = existing_messages + '\n\n' + message_prefix + new_message + message_suffix
+            if chat_textarea.document.line_count <= 1:
+                updated_messages = existing_messages + message_prefix + new_message + message_suffix
+            else:
+                updated_messages = existing_messages + '\n\n' + message_prefix + new_message + message_suffix
 
-        chat_textarea.document = Document(text=updated_messages, cursor_position=len(updated_messages))
-        message_textarea.text = ''
-        # send the message to the recipient
-        global sender_message, sender_message_type
-        sender_message_type = NORMAL
-        sender_message = original_message
+            chat_textarea.document = Document(text=updated_messages, cursor_position=len(updated_messages))
+            message_textarea.text = ''
+            # send the message to the recipient
+            global sender_message, sender_message_type
+            sender_message_type = NORMAL
+            sender_message = original_message
 
 
 def get_prefix_text(email, username):
@@ -325,14 +350,8 @@ def _(event):
 #     """
 #     sio_thread.start()
 
-
-try:
-    print(open('client/resources/banner.txt', 'r').read())
-    # time.sleep(2)
-    sio_thread = threading.Thread(target=start_instant_messaging, daemon=True)
-    sio_thread.start()
-except:
-    pass
+# start the messaging thread
+start_messaging_thread()
 
 
 style = Style.from_dict(
