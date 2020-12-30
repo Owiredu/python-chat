@@ -5,6 +5,7 @@ from pyisemail import is_email
 from constants import *
 from database import Database
 from utils import generate_activation_code
+from send_email import SendEmail
 
 
 sio = socketio.Server() # socketio.Server(logger=True, engineio_logger=True)
@@ -132,6 +133,10 @@ def register(sid, data):
             # submit the user's registration data
             insert_user_query = users_table.insert().values(email=email_address, username=username, password_hash=password_hash, sid=sid, activation_code=activation_code)
             db_conn.execute(insert_user_query)
+        # send activation code as email
+        mail_sender_thread = SendEmail()
+        mail_sender_thread.set_email_info(email_address, activation_code)
+        mail_sender_thread.start()
         # send confirmation message to user
         data = dict(_from=SERVER_NAME, to='', message=f'Submission successful', file='', msg_type=SUCCESS)
         sio.emit('receive', data, namespace='/register', room=sid)
