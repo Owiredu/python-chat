@@ -300,16 +300,7 @@ def _(event):
 # start the registration thread
 start_registration_thread()
 
-
-style = Style.from_dict(
-    {
-        "status": "reverse",
-        "status.position": "#aaaa00",
-        "status.key": "#ffaa00",
-        "not-searching": "#888888",
-    }
-)
-
+# put interface together
 registration_frame = Frame(title=get_status_text('You', 'Offline'), body=HSplit([]))
 root_container = FloatContainer(content=registration_frame, floats=[])
 layout = Layout(root_container, focused_element=registration_dialog)
