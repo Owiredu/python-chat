@@ -11,7 +11,6 @@ from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.document import Document
 from prompt_toolkit.lexers import Lexer
-from prompt_toolkit.shortcuts import input_dialog
 from utils import get_current_datetime
 import socketio
 import threading, time, re
@@ -41,7 +40,7 @@ recipient_connection_status = "Offline"
 current_datetime = get_current_datetime()
 
 # get chat message indent
-chat_message_indent = ' ' * 5
+chat_message_indent = '#=>  '
 
 # get app name
 app_name = 'sChat'
@@ -57,7 +56,7 @@ def connect():
     # notify server that client is online
     global messages_thread_status
     if messages_thread_status == MESSAGE_THREAD_DOWN:
-        data = dict(_from=my_contact, to=SERVER_NAME, message=ONLINE, file=None, msg_type=STATUS_UPDATE)
+        data = dict(_from=my_contact, to=SERVER_NAME, message=ONLINE, file='', msg_type=STATUS_UPDATE)
         send(data)
         # start the background activity for sending data
         sio.start_background_task(send_text_data)
@@ -83,15 +82,11 @@ def send_text_data():
     while True:
         sio.sleep(0)
         #data = dict() # (from, to, text, file[dict] = [filename, file type, file data])
-        data = dict(_from=my_contact, to='jason@gmail.com', message='', file=None, msg_type=NORMAL)
+        data = dict(_from=my_contact, to='jason@gmail.com', message='', file='', msg_type=NORMAL)
         global sender_message, sender_message_type
         data['msg_type'] = sender_message_type
         data['message'] = sender_message
         if not data['message'] == '':
-            # disconnect from server when quitting
-            if data['message'].strip().lower() == '/quit':
-                sio.disconnect()
-                break
             # send the data to the recipient
             send(data)
             # clear the sender message
@@ -117,101 +112,6 @@ def start_instant_messaging():
 #--------------------- END CHAT BACKEND ---------------------#
 
 
-
-#--------------------- START REGISTRATION DIALOG ---------------------#
-
-reg_email = ''
-reg_username = ''
-reg_password = ''
-reg_verification_code = ''
-
-class RegistrationDialog:
-    def __init__(self):
-        self.title = 'Sign Up to sChat'
-        self.email_label = Label(text='Email: ')
-        self.username_label = Label(text='Username: ')
-        self.password_label = Label(text='Password: ')
-        self.space_label = Label(text='')
-
-        def accept():
-            """
-            Respond to okay button press
-            """
-            reg_email = self.email_textarea.text.strip()
-            reg_username = self.username_textarea.text.strip()
-            reg_password = self.password_textarea.text
-
-            if not is_email(reg_email, diagnose=True):
-                chat_frame.title = "Invalid"
-
-        def cancel():
-            """
-            Respond to cancel option
-            """
-            # hide dialog 
-            if registration_float in root_container.floats:
-                root_container.floats.remove(registration_float)
-            # disconnect from server and quit app
-            exit_app()
-            
-
-        self.email_textarea = TextArea(
-            multiline=False,
-            width=D(preferred=40),
-        )
-
-        self.username_textarea = TextArea(
-            multiline=False,
-            width=D(preferred=40),
-        )
-
-        self.password_textarea = TextArea(
-            multiline=False,
-            width=D(preferred=40),
-            password=True
-        )
-
-        self.error_textarea = TextArea(
-            multiline=False,
-            width=D(preferred=40),
-        )
-
-        email_hsplit = HSplit([self.email_label, self.email_textarea])
-        username_hsplit = HSplit([self.username_label, self.username_textarea])
-        password_hsplit = HSplit([self.password_label, self.password_textarea])
-
-        input_area_hsplit = HSplit([email_hsplit, username_hsplit, password_hsplit, self.space_label, self.error_textarea])
-
-        ok_button = Button(text="Continue", handler=accept)
-        cancel_button = Button(text="Cancel", handler=cancel)
-
-        self.dialog = Dialog(
-            title=self.title,
-            body=input_area_hsplit,
-            buttons=[ok_button, cancel_button],
-            width=D(preferred=80),
-            modal=True,
-        )
-
-    def __pt_container__(self):
-        return self.dialog
-
-
-registration_dialog = RegistrationDialog()
-registration_float = Float(registration_dialog)
-
-def open_registration_dialog():
-    """
-    Opens the registration dialog
-    """
-    # show the registration dialog
-    root_container.floats.insert(0, registration_float)
-    get_app().layout.focus(registration_dialog)
-
-#--------------------- END REGISTRATION DIALOG ---------------------#
-
-
-
 #--------------------- START CHAT FRONTEND ---------------------#
 
 #################### SEND/RECIEVE MESSAGE WIDGETS ####################
@@ -221,8 +121,8 @@ def get_sender_message(buffer):
     Get text from the message text area
     """
     existing_messages = chat_textarea.text
-    message_prefix =  f'({get_current_datetime()})-{sender_email}[{sender_username}]--' + '{\n' 
-    message_suffix = '\n}'
+    message_prefix =  f'({get_current_datetime()}){sender_email}[{sender_username}]' + '\n' 
+    message_suffix = '\n'
     updated_messages = ''
 
     original_message = buffer.text
@@ -248,8 +148,8 @@ def send_message_button_handler():
     Sends the message to the recipient when the send button is clicked
     """
     existing_messages = chat_textarea.text
-    message_prefix =  f'({get_current_datetime()})-{sender_email}[{sender_username}]--' + '{\n' 
-    message_suffix = '\n}'
+    message_prefix =  f'({get_current_datetime()}){sender_email}[{sender_username}]' + '\n' 
+    message_suffix = '\n'
     updated_messages = ''
 
     original_message = message_textarea.text
@@ -327,6 +227,7 @@ send_message_container = VSplit([
 ])
 send_message_frame = Frame(title=get_status_text(sender_alias, 'Offline'), body=send_message_container)
 
+
 class ChatLexer(Lexer):
     """
     This is controls syntax highlighting in the chat area
@@ -337,23 +238,25 @@ class ChatLexer(Lexer):
         def get_line(lineno):
             style = []
             line = document.lines[lineno]
-            if line.startswith('(') and line.endswith(']--{'):
+            if line.startswith('(') and line.endswith(']'):
                 # style for message prefix. Eg. (2020-12-26 22:58:09)-nanakofiowiredu@gmail.com[Owiredu]--{
-                datetime_with_left_bracket, email_username_symbols = line.split(')-') # (2020-12-26 22:58:09 and nanakofiowiredu@gmail.com[Owiredu]--{
-                email, username = email_username_symbols[:-4].split('[') # nanakofiowiredu@gmail.com and Owiredu
-                style.append(('#ff0066', datetime_with_left_bracket + ')'))
-                style.append(('#00aa00', '-'))
-                style.append(('ansicyan', email))
-                style.append(('#00aa00', '['))
-                style.append(('#ffff00', username))
-                style.append(('#00aa00', ']'))
-                style.append(('orange', '--{'))
+                datetime_with_left_bracket, email_username_symbols = line.split(')') # (2020-12-26 22:58:09 and nanakofiowiredu@gmail.com[Owiredu]
+                email, username = email_username_symbols[:-1].split('[') # nanakofiowiredu@gmail.com and Owiredu
+                style.append(('bg:red fg:white', datetime_with_left_bracket + ')'))
+                # style.append(('bg:#00aa00 fg:white', '-'))
+                style.append(('bg:green fg:white', email))
+                style.append(('bg:magenta fg:white', '['))
+                style.append(('bg:magenta fg:white', username))
+                style.append(('bg:magenta fg:white', ']'))
+                # style.append(('bg:orange fg:white', '--{'))
             elif line.startswith(chat_message_indent):
                 # style for actual message
-                style.append(('#ffffff', line))
-            elif line.startswith('}'):
-                # style for message suffix
-                style.append(('orange', '}'))
+                style.append(('bg:blue fg:white', '#=>'))
+                style.append(('', ' '))
+                style.append(('#ffffff', line[len(chat_message_indent):]))
+            # elif line.startswith('}'):
+            #     # style for message suffix
+            #     style.append(('bg:orange fg:white', '}'))
             return style
 
         return get_line
@@ -377,11 +280,10 @@ def _(event):
     """
     Press TAB key to toggle focus between the message textarea and send button
     """
-    if not get_app().layout.has_focus(registration_dialog):
-        if get_app().layout.has_focus(message_textarea):
-            get_app().layout.focus(send_message_button)
-        elif get_app().layout.has_focus(send_message_button):
-            get_app().layout.focus(message_textarea)
+    if get_app().layout.has_focus(message_textarea):
+        get_app().layout.focus(send_message_button)
+    elif get_app().layout.has_focus(send_message_button):
+        get_app().layout.focus(message_textarea)
 
 
 @kb.add('c-c')
@@ -389,11 +291,10 @@ def _(event):
     """
     Press CTRL-C to switch between message area and chat area
     """
-    if not get_app().layout.has_focus(registration_dialog):
-        if get_app().layout.has_focus(chat_textarea):
-            get_app().layout.focus(message_textarea)
-        else:
-            get_app().layout.focus(chat_textarea)
+    if get_app().layout.has_focus(chat_textarea):
+        get_app().layout.focus(message_textarea)
+    else:
+        get_app().layout.focus(chat_textarea)
 
 #################### GENERAL ####################
 
@@ -425,23 +326,13 @@ def _(event):
 #     sio_thread.start()
 
 
-@kb.add('c-a')
-def _(event):
-    """
-    Press CTRL-R open dialog
-    """
-    root_container.floats.insert(0, registration_float)
-    get_app().layout.focus(registration_dialog)
-
-
-@kb.add('c-r')
-def _(event):
-    """
-    Press CTRL-R open dialog
-    """
-    if registration_float in root_container.floats:
-        root_container.floats.remove(registration_float)
-        get_app().layout.focus(message_textarea)
+try:
+    print(open('client/resources/banner.txt', 'r').read())
+    # time.sleep(2)
+    sio_thread = threading.Thread(target=start_instant_messaging, daemon=True)
+    sio_thread.start()
+except:
+    pass
 
 
 style = Style.from_dict(
@@ -453,22 +344,9 @@ style = Style.from_dict(
     }
 )
 
-
-try:
-    print(open('client/resources/banner.txt', 'r').read())
-    # time.sleep(2)
-    # d = TextInputDialog(title='Test', label_text='Enter name: ')
-    # text = input_dialog(title='Input dialog example', text='Please type your name:').run()
-    sio_thread = threading.Thread(target=start_instant_messaging, daemon=True)
-    sio_thread.start()
-except:
-    pass
-
-
 root_container = FloatContainer(content=chat_message_container, floats=[])
-layout = Layout(root_container, focused_element=registration_dialog)
+layout = Layout(root_container, focused_element=message_textarea)
 app = Application(layout=layout, key_bindings=kb, full_screen=True, mouse_support=True, refresh_interval=0.11, style=style)
-open_registration_dialog()  # TODO: check if registration file exists before showing dialog, implement continue action
 app.run()
 
 #--------------------- END CHAT FRONTEND ---------------------#
