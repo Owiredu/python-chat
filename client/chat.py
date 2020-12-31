@@ -10,20 +10,21 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.document import Document
-from prompt_toolkit.lexers import Lexer
 from utils import get_current_datetime
 import socketio
 import threading, time, re
 from pyisemail import is_email
-from constants import *
-import sys
+from constants import (
+    MESSAGE_THREAD_UP, MESSAGE_THREAD_DOWN, CHAT_PORT, SERVER_NAME, STATUS_UPDATE, 
+    ONLINE, OFFLINE, NORMAL, CHAT_MESSAGE_INDENT)
+from chat_lexer import ChatLexer
 
 
-
+# connection variables
 sio = socketio.Client() # socketio.Client(logger=True, engineio_logger=True)
 server_url = 'http://localhost:' + CHAT_PORT
-my_contact = 'nkowiredu@gmail.com'
-contacts = dict() # (email: username)
+
+# message variables
 sender_message_type = NORMAL
 sender_message = ''
 messages_thread_status = MESSAGE_THREAD_DOWN
@@ -32,7 +33,7 @@ messages_thread_status = MESSAGE_THREAD_DOWN
 server_connection_status = OFFLINE
 
 # get users' data
-sender_username = "Owiredu"
+sender_username = "owiredu_nana_kofi"
 sender_alias = "You"
 sender_email = "nanakofiowiredu@gmail.com"
 recipient_username = "Samson"
@@ -41,9 +42,6 @@ recipient_connection_status = "Offline"
 
 # get current datetime
 current_datetime = get_current_datetime()
-
-# get chat message indent
-chat_message_indent = '#=>  '
 
 # get app name
 app_name = 'sChat'
@@ -57,11 +55,11 @@ kb = KeyBindings()
 def connect():
     global messages_thread_status, server_connection_status
     server_connection_status = ONLINE
-    # notify server that client is online
     send_message_frame.title = get_status_text('You', 'Online')
+    # send status update message
+    data = dict(_from=sender_email, to=SERVER_NAME, message=ONLINE, file='', msg_type=STATUS_UPDATE)
+    send(data)
     if messages_thread_status == MESSAGE_THREAD_DOWN:
-        data = dict(_from=my_contact, to=SERVER_NAME, message=ONLINE, file='', msg_type=STATUS_UPDATE)
-        send(data)
         # start the background activity for sending data
         sio.start_background_task(send_text_data)
         messages_thread_status = MESSAGE_THREAD_UP
@@ -88,7 +86,7 @@ def send_text_data():
     while True:
         sio.sleep(0)
         #data = dict() # (from, to, text, file[dict] = [filename, file type, file data])
-        data = dict(_from=my_contact, to='jason@gmail.com', message='', file='', msg_type=NORMAL)
+        data = dict(_from=sender_email, to='jason@gmail.com', message='', file='', msg_type=NORMAL)
         global sender_message, sender_message_type
         data['msg_type'] = sender_message_type
         data['message'] = sender_message
@@ -151,7 +149,7 @@ def get_sender_message(buffer):
 
         original_message = buffer.text
         if original_message.strip() != '':
-            new_message = '\n'.join([chat_message_indent + line for line in original_message.split('\n')])
+            new_message = '\n'.join([CHAT_MESSAGE_INDENT + line for line in original_message.split('\n')])
 
             if chat_textarea.document.line_count <= 1:
                 updated_messages = existing_messages + message_prefix + new_message + message_suffix
@@ -179,7 +177,7 @@ def send_message_button_handler():
 
         original_message = message_textarea.text
         if original_message.strip() != '':
-            new_message = '\n'.join([chat_message_indent + line for line in original_message.split('\n')])
+            new_message = '\n'.join([CHAT_MESSAGE_INDENT + line for line in original_message.split('\n')])
 
             if chat_textarea.document.line_count <= 1:
                 updated_messages = existing_messages + message_prefix + new_message + message_suffix
@@ -199,10 +197,10 @@ def get_prefix_text(email, username):
     Returns the formatted text for the message and chat prefix
     """
     formatted_text = FormattedText([
-        ('ansicyan', sender_email),
+        ('ansicyan', email),
         # ('#ffa500', '-'),
         ('#00aa00', '['),
-        ('#ffff00', sender_username),
+        ('#ffff00', username),
         ('#00aa00', ']'),
         ('#00aa00', '# ')
     ])
@@ -243,6 +241,7 @@ def get_search_prompt(type):
     return formatted_text
 
 
+# send message area
 message_textarea = TextArea(accept_handler=get_sender_message, multiline=True, scrollbar=True, get_line_prefix=get_message_line_prefix)
 send_message_button = Button('Send', handler=send_message_button_handler)
 send_message_container = VSplit([
@@ -253,42 +252,10 @@ send_message_container = VSplit([
 send_message_frame = Frame(title=get_status_text(sender_alias, 'Offline'), body=send_message_container)
 
 
-class ChatLexer(Lexer):
-    """
-    This is controls syntax highlighting in the chat area
-    """
-
-    def lex_document(self, document):
-
-        def get_line(lineno):
-            style = []
-            line = document.lines[lineno]
-            if line.startswith('(') and line.endswith(']'):
-                # style for message prefix. Eg. (2020-12-26 22:58:09)-nanakofiowiredu@gmail.com[Owiredu]--{
-                datetime_with_left_bracket, email_username_symbols = line.split(')') # (2020-12-26 22:58:09 and nanakofiowiredu@gmail.com[Owiredu]
-                email, username = email_username_symbols[:-1].split('[') # nanakofiowiredu@gmail.com and Owiredu
-                style.append(('bg:red fg:white', datetime_with_left_bracket + ')'))
-                # style.append(('bg:#00aa00 fg:white', '-'))
-                style.append(('bg:green fg:white', email))
-                style.append(('bg:magenta fg:white', '['))
-                style.append(('bg:magenta fg:white', username))
-                style.append(('bg:magenta fg:white', ']'))
-                # style.append(('bg:orange fg:white', '--{'))
-            elif line.startswith(chat_message_indent):
-                # style for actual message
-                style.append(('bg:blue fg:white', '#=>'))
-                style.append(('', ' '))
-                style.append(('#ffffff', line[len(chat_message_indent):]))
-            # elif line.startswith('}'):
-            #     # style for message suffix
-            #     style.append(('bg:orange fg:white', '}'))
-            return style
-
-        return get_line
-
+# display chat area
 chat_search_field = SearchToolbar(text_if_not_searching=[("class:not-searching", "Press '/' to start searching.")], forward_search_prompt=get_search_prompt('Forward'), 
                                     backward_search_prompt=get_search_prompt('Backward'), ignore_case=True)
-chat_textarea = TextArea(multiline=True, scrollbar=True, read_only=True, search_field=chat_search_field, lexer=ChatLexer()) # lexer=DynamicLexer(lambda: ChatLexer())
+chat_textarea = TextArea(multiline=True, scrollbar=True, read_only=True, search_field=chat_search_field, lexer=ChatLexer())
 chat_hsplit = HSplit([
     chat_textarea,
     chat_search_field, 
@@ -341,14 +308,6 @@ def _(event):
     Press CTRL-Q to exit the user interface.
     """
     exit_app()
-
-
-# @kb.add('c-s')
-# def _(event):
-#     """
-#     Press CTRL-S to connect to the server
-#     """
-#     sio_thread.start()
 
 # start the messaging thread
 start_messaging_thread()
