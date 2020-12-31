@@ -2,10 +2,13 @@ import eventlet
 import re
 import socketio
 from pyisemail import is_email
-from constants import *
-from database import Database
+from database import UsersDb
 from utils import generate_activation_code
 from send_email import SendEmail
+from constants import (
+    REGISTER_PORT, REGISTER, SUCCESS, ERROR,
+    SERVER_NAME, ACTIVATION, PASSWORD_REGEX_STRING
+)
 
 
 sio = socketio.Server() # socketio.Server(logger=True, engineio_logger=True)
@@ -13,7 +16,7 @@ app = socketio.WSGIApp(sio, static_files={
     '/': {'content_type': 'text/html', 'filename': 'server/templates/index.html'}
 })
 # get table objects
-db = Database() # database object
+db = UsersDb() # database object
 db_conn = db.db_conn # database connection object
 users_table = db.table('users') # users table object
 

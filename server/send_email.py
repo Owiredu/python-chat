@@ -2,6 +2,8 @@ from threading import Thread
 import smtplib
 from email.message import EmailMessage
 from email.headerregistry import Address
+import time
+from constants import MAX_EMAIL_RETRIES
 
 
 class SendEmail(Thread):
@@ -15,6 +17,7 @@ class SendEmail(Thread):
         self.sender_password = "Godisgood2018"
         self.sender_name = 'sChat'
         self.subject = 'Account Activation Code'
+        self.retries_count = 0
 
     def create_smtp_connection(self):
         """
@@ -68,19 +71,22 @@ class SendEmail(Thread):
         """
         Sends the email
         """
-        self.create_smtp_connection()
-        self.set_subject_sender_recipient()
-        self.set_msg_content()
-        self.smtp_send_message()
-        self.close_smtp()
+        try:
+            self.create_smtp_connection()
+            self.set_subject_sender_recipient()
+            self.set_msg_content()
+            self.smtp_send_message()
+            self.close_smtp()
+        except:
+            if self.retries_count < MAX_EMAIL_RETRIES:
+                self.retries_count += 1
+                time.sleep(5)
+                self.send_email()
 
     def run(self):
         """
-        This method sends the alert
+        This method runs the email thread
         """
-        try:
-            self.send_email()
-        except:
-            self.send_email()
+        self.send_email()
             
 

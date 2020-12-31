@@ -2,7 +2,7 @@ import sqlalchemy as sqla
 from passlib.hash import pbkdf2_sha512
 
 
-class Database:
+class UsersDb:
     """
     Handles database connection and operations
     """
@@ -29,4 +29,4 @@ class Database:
         Compares a raw password to a hashed password.
         Returns true if they match else it returns false
         """
-        return pbkdf2_sha512.verify(raw_password, hashed_password)
+        return pbkdf2_sha512.verify(password, hashed_password)

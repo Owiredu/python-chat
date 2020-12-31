@@ -23,3 +23,6 @@ PASSWORD_REGEX_STRING = "(?=^.{8,}$)(?=.*\d)(?=.*[!@#$%^&*]+)(?![.\n])(?=.*[A-Z]
 
 # activation code length
 ACTIVATION_CODE_LENGTH = 6
+
+# maximum email sending retries
+MAX_EMAIL_RETRIES = 3

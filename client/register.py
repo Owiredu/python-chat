@@ -7,9 +7,12 @@ from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.styles import Style
-import socketio, threading, re, sys, os, time
+import socketio, threading, re, time
 from pyisemail import is_email
-from constants import *
+from constants import (
+    MESSAGE_THREAD_UP, MESSAGE_THREAD_DOWN, REGISTER_PORT, REGISTER, OFFLINE, ONLINE, 
+    SERVER_NAME, ACTIVATION, PASSWORD_REGEX_STRING, ERROR
+)
 
 
 sio = socketio.Client() # socketio.Client(logger=True, engineio_logger=True)
@@ -284,7 +287,7 @@ class RegistrationDialog:
 
 
 registration_dialog = RegistrationDialog()
-registration_float = Float(registration_dialog)
+registration_float = Float(registration_dialog, transparent=True)
 
 
 def open_registration_dialog():

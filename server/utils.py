@@ -1,6 +1,6 @@
 from datetime import datetime
 import string, random, os, sys
-from constants import *
+from constants import ACTIVATION_CODE_LENGTH
 
 
 def get_current_datetime():
@@ -18,7 +18,10 @@ def generate_activation_code(length=ACTIVATION_CODE_LENGTH):
     return ''.join(random.choice(chars) for i in range(length))
 
 
-def resource_path(self, relative_path):
+def resource_path(relative_path):
+    """
+    Returns absolute path of project relative paths
+    """
     if hasattr(sys, '_MEIPASS'):
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.join(os.path.abspath("."), relative_path)
