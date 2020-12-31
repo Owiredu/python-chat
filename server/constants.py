@@ -2,6 +2,10 @@
 ONLINE = 1 # signifies the the client/sender is online
 OFFLINE = 0 # signifies that the client/sender is offline
 
+# for account status
+ACTIVE = 1
+INACTIVE = 0
+
 # for message types
 SUCCESS = 2 # for success notifications
 ERROR = -2 # for error notifications 

@@ -1,3 +1,4 @@
+from queue import Queue
 from threading import Thread
 import smtplib
 from email.message import EmailMessage
@@ -12,12 +13,20 @@ class SendEmail(Thread):
     """
 
     def __init__(self):
-        super().__init__()
+        super().__init__(daemon=True)
         self.sender_email = "unibasesoftware@gmail.com"
         self.sender_password = "Godisgood2018"
         self.sender_name = 'sChat'
         self.subject = 'Account Activation Code'
         self.retries_count = 0
+        self.email_queue = Queue()
+        self.stop = False
+
+    def add_to_queue(self, email_address, activation_code):
+        """
+        Adds message to the queue
+        """
+        self.email_queue.put((email_address, activation_code))
 
     def create_smtp_connection(self):
         """
@@ -28,14 +37,6 @@ class SendEmail(Thread):
         self.smtp.ehlo()
         self.smtp.starttls()
         self.smtp.login(self.sender_email, self.sender_password)
-
-    def set_email_info(self, recipient_email, activation_code):
-        # argument types: String, String, list
-        """
-        This method sets the recognition info
-        """
-        self.recipient_email = recipient_email
-        self.activation_code = activation_code
 
     def set_subject_sender_recipient(self):
         """
@@ -81,12 +82,16 @@ class SendEmail(Thread):
             if self.retries_count < MAX_EMAIL_RETRIES:
                 self.retries_count += 1
                 time.sleep(5)
+                print('here')
                 self.send_email()
 
     def run(self):
         """
         This method runs the email thread
         """
-        self.send_email()
+        while not self.stop:
+            if not self.email_queue.empty():
+                self.recipient_email, self.activation_code = self.email_queue.get()
+                self.send_email()
             
 

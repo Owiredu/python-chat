@@ -23,6 +23,10 @@ users_table = db.table('users') # users table object
 # track number of user connected
 num_of_clients_connected = 0
 
+# email thread
+mail_sender_thread = SendEmail()
+mail_sender_thread.start()
+
 
 @sio.event(namespace='/register')
 def connect(sid, environ):
@@ -137,9 +141,7 @@ def register(sid, data):
             insert_user_query = users_table.insert().values(email=email_address, username=username, password_hash=password_hash, sid=sid, activation_code=activation_code)
             db_conn.execute(insert_user_query)
         # send activation code as email
-        mail_sender_thread = SendEmail()
-        mail_sender_thread.set_email_info(email_address, activation_code)
-        mail_sender_thread.start()
+        mail_sender_thread.add_to_queue(email_address, activation_code)
         # send confirmation message to user
         data = dict(_from=SERVER_NAME, to='', message=f'Submission successful', file='', msg_type=SUCCESS)
         sio.emit('receive', data, namespace='/register', room=sid)
