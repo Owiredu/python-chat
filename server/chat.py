@@ -2,8 +2,8 @@ import eventlet
 from queue import Queue
 import socketio
 from pyisemail import is_email
-from constants import (CHAT_PORT, OFFLINE, STATUS_UPDATE, ONLINE, NORMAL, ERROR, SUCCESS, SERVER_NAME)
-from database import db, db_conn, users_table
+from constants import (ACTIVE, CHAT_PORT, OFFLINE, STATUS_UPDATE, ONLINE, NORMAL, ERROR, SUCCESS, SERVER_NAME)
+from database import db_conn, users_table
 
 
 sio = socketio.Server() # socketio.Server(logger=True, engineio_logger=True)
@@ -40,19 +40,20 @@ def receive(sid, data):
     if data['msg_type'] == STATUS_UPDATE:
         if data['message'] == ONLINE:
             # update the status to online
-            status_update_queue.put((sid, data['_from'], ONLINE))
+            status_update_queue.put((sid, data['_from']['email'], ONLINE))
         else:
             # change the user's status to offline
             status_update_queue.put((sid, None, OFFLINE))
     if data['msg_type'] == NORMAL:
-        # TODO: forward the message to the addressed recipient
-        print('\n', '-' * 30)
-        print('FROM: '+ data['_from'], '\nTO:', data['to'], '\nMESSAGE: ', data['message'], '\nFILE:', data['file'], '\nMSG_TYPE:', data['msg_type'])
-        print('-' * 30, '\n')
-        new_to = data['_from']
-        data['_from'] = data['to']
-        data['to'] = new_to
-        sio.emit('receive', data['message'], namespace='/chat', room=sid)
+        # forward the message to the addressed recipient
+        select_sid_query = users_table.select().where(users_table.c.email==data['to'])
+        user_data = db_conn.execute(select_sid_query).fetchone()
+        if user_data and user_data[8] == ACTIVE:
+            if user_data[4] == ONLINE:
+                sio.emit('receive', data, namespace='/chat', room=user_data[6])
+            else:
+                # TODO: store the message when the client is offline
+                print(data['to'], 'is offline')
 
 
 @sio.event(namespace='/chat')

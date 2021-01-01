@@ -36,9 +36,15 @@ server_connection_status = OFFLINE
 sender_username = "owiredu_nana_kofi"
 sender_alias = "You"
 sender_email = "nanakofiowiredu@gmail.com"
-recipient_username = "Samson"
-recipient_email = "samsom@yahoo.com"
+recipient_username = "owiredu_hack"
+recipient_email = "khristinapiatek@gmail.com"
 recipient_connection_status = "Offline"
+
+# sender_username = "owiredu_hack"
+# sender_alias = "You"
+# sender_email = "khristinapiatek@gmail.com"
+# recipient_username = "owiredu_nana_kofi"
+# recipient_email = "nanakofiowiredu@gmail.com"
 
 # get current datetime
 current_datetime = get_current_datetime()
@@ -57,7 +63,7 @@ def connect():
     server_connection_status = ONLINE
     send_message_frame.title = get_status_text('You', 'Online')
     # send status update message
-    data = dict(_from=sender_email, to=SERVER_NAME, message=ONLINE, file='', msg_type=STATUS_UPDATE)
+    data = dict(_from={'email': sender_email, 'username': sender_username}, to=SERVER_NAME, message=ONLINE, file='', msg_type=STATUS_UPDATE)
     send(data)
     if messages_thread_status == MESSAGE_THREAD_DOWN:
         # start the background activity for sending data
@@ -86,7 +92,7 @@ def send_text_data():
     while True:
         sio.sleep(0)
         #data = dict() # (from, to, text, file[dict] = [filename, file type, file data])
-        data = dict(_from=sender_email, to='jason@gmail.com', message='', file='', msg_type=NORMAL)
+        data = dict(_from={'email': sender_email, 'username': sender_username}, to=recipient_email, message='', file='', msg_type=NORMAL)
         global sender_message, sender_message_type
         data['msg_type'] = sender_message_type
         data['message'] = sender_message
@@ -94,16 +100,17 @@ def send_text_data():
             # send the data to the recipient
             send(data)
             # clear the sender message
+            message_textarea.text = ''
             sender_message = ''
 
 
 @sio.event(namespace='/chat')
 def receive(data):
-    if data['_from'] == SERVER_NAME:
+    if data['_from']['username'] == SERVER_NAME:
         # handle server messages
         pass
     else:
-        print(f"{data['_from']}: {data['message']}")
+        update_chat(data['message'], data['_from']['email'], data['_from']['username'])
 
 
 def connect_to_server():
@@ -137,32 +144,22 @@ def start_messaging_thread():
 
 #################### SEND/RECIEVE MESSAGE WIDGETS ####################
 
-def get_sender_message(buffer):
+def update_chat(new_message, email, username):
     """
-    Get text from the message text area
+    Updates the chat messages when a new message is sent or received
     """
-    if messages_thread_status == MESSAGE_THREAD_UP:
-        existing_messages = chat_textarea.text
-        message_prefix =  f'({get_current_datetime()}){sender_email}[{sender_username}]' + '\n' 
-        message_suffix = '\n'
-        updated_messages = ''
+    existing_messages = chat_textarea.text
+    message_prefix =  f'({get_current_datetime()}){email}[{username}]' + '\n' 
+    message_suffix = '\n'
+    updated_messages = ''
+    new_message = '\n'.join([CHAT_MESSAGE_INDENT + line for line in new_message.split('\n')])
 
-        original_message = buffer.text
-        if original_message.strip() != '':
-            new_message = '\n'.join([CHAT_MESSAGE_INDENT + line for line in original_message.split('\n')])
+    if chat_textarea.document.line_count <= 1:
+        updated_messages = existing_messages + message_prefix + new_message + message_suffix
+    else:
+        updated_messages = existing_messages + '\n\n' + message_prefix + new_message + message_suffix
 
-            if chat_textarea.document.line_count <= 1:
-                updated_messages = existing_messages + message_prefix + new_message + message_suffix
-            else:
-                updated_messages = existing_messages + '\n\n' + message_prefix + new_message + message_suffix
-
-            chat_textarea.document = Document(text=updated_messages, cursor_position=len(updated_messages))
-            buffer.text = ''
-            # send the message to the recipient
-            global sender_message, sender_message_type
-            sender_message_type = NORMAL
-            sender_message = original_message
-    return True
+    chat_textarea.document = Document(text=updated_messages, cursor_position=len(updated_messages))
 
 
 def send_message_button_handler():
@@ -170,26 +167,14 @@ def send_message_button_handler():
     Sends the message to the recipient when the send button is clicked
     """
     if messages_thread_status == MESSAGE_THREAD_UP:
-        existing_messages = chat_textarea.text
-        message_prefix =  f'({get_current_datetime()}){sender_email}[{sender_username}]' + '\n' 
-        message_suffix = '\n'
-        updated_messages = ''
-
-        original_message = message_textarea.text
-        if original_message.strip() != '':
-            new_message = '\n'.join([CHAT_MESSAGE_INDENT + line for line in original_message.split('\n')])
-
-            if chat_textarea.document.line_count <= 1:
-                updated_messages = existing_messages + message_prefix + new_message + message_suffix
-            else:
-                updated_messages = existing_messages + '\n\n' + message_prefix + new_message + message_suffix
-
-            chat_textarea.document = Document(text=updated_messages, cursor_position=len(updated_messages))
-            message_textarea.text = ''
+        new_message = message_textarea.text
+        if new_message.strip() != '':
+            # update the chat
+            update_chat(new_message, sender_email, sender_alias)
             # send the message to the recipient
             global sender_message, sender_message_type
             sender_message_type = NORMAL
-            sender_message = original_message
+            sender_message = new_message
 
 
 def get_prefix_text(email, username):
@@ -242,7 +227,7 @@ def get_search_prompt(type):
 
 
 # send message area
-message_textarea = TextArea(accept_handler=get_sender_message, multiline=True, scrollbar=True, get_line_prefix=get_message_line_prefix)
+message_textarea = TextArea(multiline=True, scrollbar=True, get_line_prefix=get_message_line_prefix)
 send_message_button = Button('Send', handler=send_message_button_handler)
 send_message_container = VSplit([
     message_textarea,
