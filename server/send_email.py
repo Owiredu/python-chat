@@ -82,7 +82,6 @@ class SendEmail(Thread):
             if self.retries_count < MAX_EMAIL_RETRIES:
                 self.retries_count += 1
                 time.sleep(5)
-                print('here')
                 self.send_email()
 
     def run(self):

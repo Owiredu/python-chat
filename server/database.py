@@ -30,3 +30,9 @@ class UsersDb:
         Returns true if they match else it returns false
         """
         return pbkdf2_sha512.verify(password, hashed_password)
+
+
+# get table objects
+db = UsersDb() # database object
+db_conn = db.db_conn # database connection object
+users_table = db.table('users') # users table object

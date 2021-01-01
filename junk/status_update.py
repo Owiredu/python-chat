@@ -1,13 +1,7 @@
 from threading import Thread
 from queue import Queue
-from database import UsersDb
+from database import db_conn, users_table
 from constants import OFFLINE, ONLINE
-
-
-# get table objects
-db = UsersDb()
-db_conn = db.db_conn
-users_table = db.table('users')
 
 
 class StatusUpdateThread(Thread):

@@ -1,13 +1,7 @@
 from threading import Thread
 from queue import Queue
-from database import UsersDb
+from database import db_conn, users_table
 from constants import ACTIVE, INACTIVE
-
-
-# get table objects
-db = UsersDb() # database object
-db_conn = db.db_conn # database connection object
-users_table = db.table('users') # users table object
 
 
 class ActivationThread(Thread):
