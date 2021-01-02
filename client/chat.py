@@ -21,7 +21,7 @@ from chat_lexer import ChatLexer
 
 
 # connection variables
-sio = socketio.Client() # socketio.Client(logger=True, engineio_logger=True)
+sio = socketio.Client(logger=False, engineio_logger=False) # socketio.Client(logger=True, engineio_logger=True)
 server_url = 'http://localhost:' + CHAT_PORT
 
 # message variables
@@ -33,18 +33,18 @@ messages_thread_status = MESSAGE_THREAD_DOWN
 server_connection_status = OFFLINE
 
 # get users' data
-sender_username = "owiredu_nana_kofi"
-sender_alias = "You"
-sender_email = "nanakofiowiredu@gmail.com"
-recipient_username = "owiredu_hack"
-recipient_email = "khristinapiatek@gmail.com"
+# sender_username = "owiredu_nana_kofi"
+# sender_alias = "You"
+# sender_email = "nanakofiowiredu@gmail.com"
+# recipient_username = "owiredu_hack"
+# recipient_email = "khristinapiatek@gmail.com"
 recipient_connection_status = "Offline"
 
-# sender_username = "owiredu_hack"
-# sender_alias = "You"
-# sender_email = "khristinapiatek@gmail.com"
-# recipient_username = "owiredu_nana_kofi"
-# recipient_email = "nanakofiowiredu@gmail.com"
+sender_username = "owiredu_hack"
+sender_alias = "You"
+sender_email = "khristinapiatek@gmail.com"
+recipient_username = "owiredu_nana_kofi"
+recipient_email = "nanakofiowiredu@gmail.com"
 
 # get current datetime
 current_datetime = get_current_datetime()
@@ -100,8 +100,10 @@ def send_text_data():
             # send the data to the recipient
             send(data)
             # clear the sender message
-            message_textarea.text = ''
             sender_message = ''
+            message_textarea.text = ''
+            # focus on the message textarea
+            get_app().layout.focus(message_textarea)
 
 
 @sio.event(namespace='/chat')
