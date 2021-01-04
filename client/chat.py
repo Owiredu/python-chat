@@ -33,18 +33,18 @@ messages_thread_status = MESSAGE_THREAD_DOWN
 server_connection_status = OFFLINE
 
 # get users' data
-# sender_username = "owiredu_nana_kofi"
-# sender_alias = "You"
-# sender_email = "nanakofiowiredu@gmail.com"
-# recipient_username = "owiredu_hack"
-# recipient_email = "khristinapiatek@gmail.com"
+sender_username = "owiredu_nana_kofi"
+sender_alias = "You"
+sender_email = "nanakofiowiredu@gmail.com"
+recipient_username = "owiredu_hack"
+recipient_email = "khristinapiatek@gmail.com"
 recipient_connection_status = "Offline"
 
-sender_username = "owiredu_hack"
-sender_alias = "You"
-sender_email = "khristinapiatek@gmail.com"
-recipient_username = "owiredu_nana_kofi"
-recipient_email = "nanakofiowiredu@gmail.com"
+# sender_username = "owiredu_hack"
+# sender_alias = "You"
+# sender_email = "khristinapiatek@gmail.com"
+# recipient_username = "owiredu_nana_kofi"
+# recipient_email = "nanakofiowiredu@gmail.com"
 
 # get current datetime
 current_datetime = get_current_datetime()

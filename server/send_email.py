@@ -1,8 +1,9 @@
 from queue import Queue
 from threading import Thread
 import smtplib
-from email.message import EmailMessage
-from email.headerregistry import Address
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.utils import formataddr
 import time
 from constants import MAX_EMAIL_RETRIES
 
@@ -14,10 +15,12 @@ class SendEmail(Thread):
 
     def __init__(self):
         super().__init__(daemon=True)
-        self.sender_email = "unibasesoftware@gmail.com"
-        self.sender_password = "Godisgood2018"
+        self.sender_email = "schat.app@yahoo.com"
+        self.sender_password = "owhqpqqllvgimobz"
         self.sender_name = 'sChat'
         self.subject = 'Account Activation Code'
+        self.recipient_email = ''
+        self.activation_code = ''
         self.retries_count = 0
         self.email_queue = Queue()
         self.stop = False
@@ -28,57 +31,28 @@ class SendEmail(Thread):
         """
         self.email_queue.put((email_address, activation_code))
 
-    def create_smtp_connection(self):
-        """
-        This method creates the smtp connection
-        """
-        # create connection
-        self.smtp = smtplib.SMTP('smtp.gmail.com', 587, 'localhost')
-        self.smtp.ehlo()
-        self.smtp.starttls()
-        self.smtp.login(self.sender_email, self.sender_password)
-
-    def set_subject_sender_recipient(self):
-        """
-        This method set the subject, sender and recipient emails
-        """
-        # create the message holder
-        self.message = EmailMessage()
-        self.message['Subject'] = self.subject
-        self.message['From'] = Address(self.sender_name, '', self.sender_email)
-        self.message['To'] = self.recipient_email
-
-    def set_msg_content(self):
-        """
-        This method sets the content of the email
-        """
-        self.message.set_content('')
-        content = f'<html><h1><strong>ACTIVATION CODE: <span style="color: green">{self.activation_code}</span> </strong></h1>'
-        self.message.add_alternative(content, subtype='html')
-
-    def smtp_send_message(self):
-        """
-        This method sends the message
-        """
-        self.smtp.send_message(self.message)
-
-    def close_smtp(self):
-        """
-        This method closes the smtp server
-        """
-        self.smtp.quit()
-
     def send_email(self):
         """
         Sends the email
         """
         try:
-            self.create_smtp_connection()
-            self.set_subject_sender_recipient()
-            self.set_msg_content()
-            self.smtp_send_message()
-            self.close_smtp()
-        except:
+            # create message
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = self.subject
+            msg["From"] = formataddr((self.sender_name, self.sender_email))
+            msg["To"] = self.recipient_email
+            content = f'<html><h1><strong>ACTIVATION CODE: <span style="color: green">{self.activation_code}</span> </strong></h1>'
+            msg.attach(MIMEText(content, 'html'))  
+            # connect to mail server and login
+            smtp = smtplib.SMTP_SSL('smtp.mail.yahoo.com', 465)
+            smtp.ehlo()
+            smtp.login(self.sender_email, self.sender_password)
+            # send the message
+            smtp.send_message(msg)
+            # close the connection
+            smtp.quit()
+        except Exception as e:
+            print(e)
             if self.retries_count < MAX_EMAIL_RETRIES:
                 self.retries_count += 1
                 time.sleep(5)
@@ -90,7 +64,9 @@ class SendEmail(Thread):
         """
         while not self.stop:
             if not self.email_queue.empty():
-                self.recipient_email, self.activation_code = self.email_queue.get()
+                queue_data = self.email_queue.get()
+                self.recipient_email = queue_data[0]
+                self.activation_code = queue_data[1]
                 self.send_email()
             
 
