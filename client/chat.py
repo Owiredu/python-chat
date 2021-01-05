@@ -134,7 +134,7 @@ def start_messaging_thread() -> None:
     try:
         # print(open('client/resources/banner.txt', 'r').read())
         # time.sleep(2)
-        sio_thread = threading.Thread(target=connect_to_server, daemon=True)
+        sio_thread:threading.Thread = threading.Thread(target=connect_to_server, daemon=True)
         sio_thread.start()
     except:
         pass
@@ -150,11 +150,11 @@ def update_chat(new_message:str, email:str, username:str) -> None:
     """
     Updates the chat messages when a new message is sent or received
     """
-    existing_messages = chat_textarea.text
-    message_prefix =  f'({get_current_datetime()}){email}[{username}]' + '\n' 
-    message_suffix = '\n'
-    updated_messages = ''
-    new_message = '\n'.join([CHAT_MESSAGE_INDENT + line for line in new_message.split('\n')])
+    existing_messages:str = chat_textarea.text
+    message_prefix:str =  f'({get_current_datetime()}){email}[{username}]' + '\n' 
+    message_suffix:str = '\n'
+    updated_messages:str = ''
+    new_message:str = '\n'.join([CHAT_MESSAGE_INDENT + line for line in new_message.split('\n')])
 
     if chat_textarea.document.line_count <= 1:
         updated_messages = existing_messages + message_prefix + new_message + message_suffix
