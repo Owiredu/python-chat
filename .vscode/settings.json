@@ -2,5 +2,20 @@
     "python.analysis.extraPaths": [
         "server",
         "client"
+    ],
+    "sqltools.connections": [
+        {
+            "mysqlOptions": {
+                "authProtocol": "default"
+            },
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 3306,
+            "driver": "MySQL",
+            "name": "LocalOnlineChatDb",
+            "database": "chat_db",
+            "username": "chat_server",
+            "password": "password_server"
+        }
     ]
 }

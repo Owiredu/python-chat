@@ -48,7 +48,7 @@ def receive(sid, data):
             status_update_queue.put((sid, sender_email, ONLINE))
             select_query = users_table.select().where(users_table.c.email==sender_email)
             user_data = db_conn.execute(select_query).fetchone()
-            # send stored messges
+            # send stored messges to recipient
             if user_data[5] == MESSAGES_STORED:
                 stored_messages = load_messages(sender_email)
                 for file_name, data in stored_messages.items():

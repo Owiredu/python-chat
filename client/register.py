@@ -15,20 +15,20 @@ from constants import (
 )
 
 
-sio = socketio.Client() # socketio.Client(logger=True, engineio_logger=True)
-server_url = 'http://localhost:' + REGISTER_PORT
+sio:socketio.Client = socketio.Client() # socketio.Client(logger=True, engineio_logger=True)
+server_url:str = 'http://localhost:' + REGISTER_PORT
 
 # check whether the messaging thread has started or not
-messages_thread_status = MESSAGE_THREAD_DOWN
+messages_thread_status:int = MESSAGE_THREAD_DOWN
 
 # track the server connection status
-server_connection_status = OFFLINE
+server_connection_status:int = OFFLINE
 
 # key binding object
-kb = KeyBindings()
+kb:KeyBindings = KeyBindings()
 
 # create the default registration data
-registration_data = dict(_from='', to=SERVER_NAME, username='', password='', activation_code='', file='', msg_type=REGISTER)
+registration_data:dict = dict(_from='', to=SERVER_NAME, username='', password='', activation_code='', file='', msg_type=REGISTER)
 
 
 #--------------------- START CHAT BACKEND ---------------------#
@@ -65,7 +65,7 @@ def send(data):
     sio.emit('receive', data, namespace='/register')
 
 
-def send_text_data():
+def send_text_data() -> None:
     while True:
         sio.sleep(0)
         global registration_data, server_connection_status
@@ -125,7 +125,7 @@ def receive(data):
                 activation_dialog.enable_form(True)
 
 
-def connect_to_server():
+def connect_to_server() -> None:
     """
     Connects to the chat server
     """
@@ -138,7 +138,7 @@ def connect_to_server():
         connect_to_server()
 
 
-def start_registration_thread():
+def start_registration_thread() -> None:
     """
     Starts the registration thread
     """
@@ -153,10 +153,10 @@ def start_registration_thread():
 
 #--------------------- START REGISTRATION DIALOG ---------------------#
 
-reg_email = ''
-reg_username = ''
-reg_password = ''
-reg_verification_code = ''
+reg_email:str = ''
+reg_username:str = ''
+reg_password:str = ''
+reg_verification_code:str = ''
 
 
 def reset_registration_data():
@@ -170,43 +170,43 @@ def reset_registration_data():
 class RegistrationDialog:
 
     def __init__(self):
-        self.title = 'Sign Up to sChat'
-        self.email_label = Label(text='Email: ')
-        self.username_label = Label(text='Username: ')
-        self.password_label = Label(text='Password: ')
-        self.space_label = Label(text='')           
+        self.title:str = 'Sign Up to sChat'
+        self.email_label:Label = Label(text='Email: ')
+        self.username_label:Label = Label(text='Username: ')
+        self.password_label:Label = Label(text='Password: ')
+        self.space_label:Label = Label(text='')           
 
-        self.email_textarea = TextArea(
+        self.email_textarea:TextArea = TextArea(
             multiline=False,
             width=D(preferred=40),
         )
 
-        self.username_textarea = TextArea(
+        self.username_textarea:TextArea = TextArea(
             multiline=False,
             width=D(preferred=40),
         )
 
-        self.password_textarea = TextArea(
+        self.password_textarea:TextArea = TextArea(
             multiline=False,
             width=D(preferred=40),
             password=True
         )
 
-        self.error_label = Label(
+        self.error_label:Label = Label(
             text='',
             width=D(preferred=40),
         )
 
-        email_hsplit = HSplit([self.email_label, self.email_textarea])
-        username_hsplit = HSplit([self.username_label, self.username_textarea])
-        password_hsplit = HSplit([self.password_label, self.password_textarea])
+        email_hsplit:HSplit = HSplit([self.email_label, self.email_textarea])
+        username_hsplit:HSplit = HSplit([self.username_label, self.username_textarea])
+        password_hsplit:HSplit = HSplit([self.password_label, self.password_textarea])
 
-        input_area_hsplit = HSplit([email_hsplit, username_hsplit, password_hsplit, self.space_label, self.error_label])
+        input_area_hsplit:HSplit = HSplit([email_hsplit, username_hsplit, password_hsplit, self.space_label, self.error_label])
 
-        self.ok_button = Button(text="Submit", handler=self.accept)
-        self.cancel_button = Button(text="Cancel", handler=self.cancel)
+        self.ok_button:Button = Button(text="Submit", handler=self.accept)
+        self.cancel_button:Button = Button(text="Cancel", handler=self.cancel)
 
-        self.dialog = Dialog(
+        self.dialog:Dialog = Dialog(
             title=self.title,
             body=input_area_hsplit,
             buttons=[self.ok_button, self.cancel_button],
@@ -214,7 +214,7 @@ class RegistrationDialog:
             modal=True,
         )
 
-    def accept(self):
+    def accept(self) -> None:
         """
         Respond to okay button press
         """
@@ -254,7 +254,7 @@ class RegistrationDialog:
             close_registration_dialog()
             open_activation_dialog()
 
-    def cancel(self):
+    def cancel(self) -> None:
         """
         Respond to cancel option
         """
@@ -263,34 +263,34 @@ class RegistrationDialog:
         # disconnect from server and quit app
         exit_app()
 
-    def get_error_message(self, message):
+    def get_error_message(self, message:str) -> FormattedText:
         return FormattedText([('bg:red fg:white', message)])
 
-    def get_loading_message(self, message):
+    def get_loading_message(self, message:str) -> FormattedText:
         return FormattedText([('bg:orange fg:white', message)])
 
-    def get_success_message(self, message):
+    def get_success_message(self, message:str) -> FormattedText:
         return FormattedText([('bg:green fg:white', message)])
 
-    def enable_form(self, bool_val):
-        self.email_textarea.control.focusable = lambda: bool_val
-        self.username_textarea.control.focusable = lambda: bool_val
-        self.password_textarea.control.focusable = lambda: bool_val
-        self.ok_button.control.focusable = lambda: bool_val
-        if bool_val:
+    def enable_form(self, value:bool) -> None:
+        self.email_textarea.control.focusable = lambda: value
+        self.username_textarea.control.focusable = lambda: value
+        self.password_textarea.control.focusable = lambda: value
+        self.ok_button.control.focusable = lambda: value
+        if value:
             get_app().layout.focus(self.ok_button)
         else:
             get_app().layout.focus(self.cancel_button)
 
-    def __pt_container__(self):
+    def __pt_container__(self) -> Dialog:
         return self.dialog
 
 
-registration_dialog = RegistrationDialog()
-registration_float = Float(registration_dialog, transparent=True)
+registration_dialog:RegistrationDialog = RegistrationDialog()
+registration_float:Float = Float(registration_dialog, transparent=True)
 
 
-def open_registration_dialog():
+def open_registration_dialog() -> None:
     """
     Opens the registration dialog
     """
@@ -299,7 +299,7 @@ def open_registration_dialog():
     get_app().layout.focus(registration_dialog)
 
 
-def close_registration_dialog():
+def close_registration_dialog() -> None:
     """
     Closes the registration dialog
     """
@@ -311,38 +311,38 @@ def close_registration_dialog():
 
 #--------------------- START ACTIVATION DIALOG ---------------------#
 
-reg_activation_code = ''
+reg_activation_code:str = ''
 
-def reset_activation_code():
+def reset_activation_code() -> None:
     global registration_data
     registration_data['activation_code'] = ''
 
 class ActivationDialog:
 
     def __init__(self):
-        self.title = 'Activate sChat Account'
-        self.code_sent_label = Label(text='Check your email for activation code')
-        self.activation_code_label = Label(text='Enter activation code: ')     
-        self.space_label = Label(text='')      
+        self.title:str = 'Activate sChat Account'
+        self.code_sent_label:Label = Label(text='Check your email for activation code')
+        self.activation_code_label:Label = Label(text='Enter activation code: ')     
+        self.space_label:Label = Label(text='')      
 
-        self.activation_code_textarea = TextArea(
+        self.activation_code_textarea:TextArea = TextArea(
             multiline=False,
             width=D(preferred=40),
         )
 
-        self.error_label = Label(
+        self.error_label:Label = Label(
             text='',
             width=D(preferred=40),
         )
 
-        activation_code_hsplit = HSplit([self.code_sent_label, self.space_label, self.activation_code_label, self.activation_code_textarea])
+        activation_code_hsplit:HSplit = HSplit([self.code_sent_label, self.space_label, self.activation_code_label, self.activation_code_textarea])
 
-        input_area_hsplit = HSplit([activation_code_hsplit, self.space_label, self.error_label])
+        input_area_hsplit:HSplit = HSplit([activation_code_hsplit, self.space_label, self.error_label])
 
-        self.ok_button = Button(text="Submit", handler=self.accept)
-        self.cancel_button = Button(text="Cancel", handler=self.cancel)
+        self.ok_button:Button = Button(text="Submit", handler=self.accept)
+        self.cancel_button:Button = Button(text="Cancel", handler=self.cancel)
 
-        self.dialog = Dialog(
+        self.dialog:Dialog = Dialog(
             title=self.title,
             body=input_area_hsplit,
             buttons=[self.ok_button, self.cancel_button],
@@ -350,7 +350,7 @@ class ActivationDialog:
             modal=True,
         )
 
-    def accept(self):
+    def accept(self) -> None:
         """
         Respond to okay button press
         """
@@ -372,7 +372,7 @@ class ActivationDialog:
             # exit activation dialog and app when continue is pressed
             self.cancel()
 
-    def cancel(self):
+    def cancel(self) -> None:
         """
         Respond to cancel option
         """
@@ -381,32 +381,32 @@ class ActivationDialog:
         # disconnect from server and quit app
         exit_app()
 
-    def get_error_message(self, message):
+    def get_error_message(self, message:str) -> FormattedText:
         return FormattedText([('bg:red fg:white', message)])
 
-    def get_loading_message(self, message):
+    def get_loading_message(self, message:str) -> FormattedText:
         return FormattedText([('bg:orange fg:white', message)])
 
-    def get_success_message(self, message):
+    def get_success_message(self, message:str) -> FormattedText:
         return FormattedText([('bg:green fg:white', message)])
 
-    def enable_form(self, bool_val):
-        self.activation_code_textarea.control.focusable = lambda: bool_val
-        self.ok_button.control.focusable = lambda: bool_val
-        if bool_val:
+    def enable_form(self, value:bool) -> None:
+        self.activation_code_textarea.control.focusable = lambda: value
+        self.ok_button.control.focusable = lambda: value
+        if value:
             get_app().layout.focus(self.ok_button)
         else:
             get_app().layout.focus(self.cancel_button)
 
-    def __pt_container__(self):
+    def __pt_container__(self) -> Dialog:
         return self.dialog
 
 
-activation_dialog = ActivationDialog()
-activation_float = Float(activation_dialog)
+activation_dialog:ActivationDialog = ActivationDialog()
+activation_float:Float = Float(activation_dialog)
 
 
-def open_activation_dialog():
+def open_activation_dialog() -> None:
     """
     Opens the registration dialog
     """
@@ -415,7 +415,7 @@ def open_activation_dialog():
     get_app().layout.focus(activation_dialog)
 
 
-def close_activation_dialog():
+def close_activation_dialog() -> None:
     """
     Closes the registration dialog
     """
@@ -424,7 +424,7 @@ def close_activation_dialog():
 
 #--------------------- END ACTIVATION DIALOG ---------------------#
 
-def get_status_text(label, status):
+def get_status_text(label:str, status:str) -> FormattedText:
     """
     Returns a formatted status text
     """
@@ -435,7 +435,7 @@ def get_status_text(label, status):
     return formatted_text
 
 
-def exit_app():
+def exit_app() -> None:
     """
     Closes the connection and exits app
     """
@@ -459,10 +459,10 @@ def _(event):
 start_registration_thread()
 
 # put interface together
-registration_frame = Frame(title=get_status_text('You', 'Offline'), body=HSplit([]))
-root_container = FloatContainer(content=registration_frame, floats=[])
-layout = Layout(root_container, focused_element=registration_dialog)
-app = Application(layout=layout, key_bindings=kb, full_screen=True, mouse_support=True, refresh_interval=0.11)
+registration_frame:Frame = Frame(title=get_status_text('You', 'Offline'), body=HSplit([]))
+root_container:FloatContainer = FloatContainer(content=registration_frame, floats=[])
+layout:Layout = Layout(root_container, focused_element=registration_dialog)
+app:Application = Application(layout=layout, key_bindings=kb, full_screen=True, mouse_support=True, refresh_interval=0.11)
 
 # open the registration dialog
 open_registration_dialog()
