@@ -74,8 +74,7 @@ def receive(sid, data):
                 # save the message
                 save_message(data['to'], data)
                 # update the stored messages to message stored
-                update_stored_messages_query:str = users_table.update().where(users_table.c.email==data['to']).values(stored_messages=MESSAGES_STORED)
-                db_conn.execute(update_stored_messages_query)
+                stored_messages_queue.put((data['to'], MESSAGES_STORED))
 
 
 @sio.event(namespace='/chat')
@@ -135,4 +134,5 @@ def update_stored_messages_status() -> None:
 
 if __name__ == '__main__':
     sio.start_background_task(update_connection_status)
+    sio.start_background_task(update_stored_messages_status)
     eventlet.wsgi.server(eventlet.listen(('', int(CHAT_PORT))), app)
