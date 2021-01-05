@@ -35,18 +35,18 @@ receive_messages_queue:Queue = Queue()
 server_connection_status:int = OFFLINE
 
 # get users' data
-# sender_username:str = "owiredu_nana_kofi"
-# sender_alias:str = "You"
-# sender_email:str = "nanakofiowiredu@gmail.com"
-# recipient_username:str = "owiredu_hack"
-# recipient_email:str = "khristinapiatek@gmail.com"
+sender_username:str = "owiredu_nana_kofi"
+sender_alias:str = "You"
+sender_email:str = "nanakofiowiredu@gmail.com"
+recipient_username:str = "owiredu_hack"
+recipient_email:str = "khristinapiatek@gmail.com"
 recipient_connection_status:str = "Offline"
 
-sender_username:str = "owiredu_hack"
-sender_alias:str = "You"
-sender_email:str = "khristinapiatek@gmail.com"
-recipient_username:str = "owiredu_nana_kofi"
-recipient_email:str = "nanakofiowiredu@gmail.com"
+# sender_username:str = "owiredu_hack"
+# sender_alias:str = "You"
+# sender_email:str = "khristinapiatek@gmail.com"
+# recipient_username:str = "owiredu_nana_kofi"
+# recipient_email:str = "nanakofiowiredu@gmail.com"
 
 # get current datetime
 current_datetime:str = get_current_datetime()

@@ -3,6 +3,7 @@ from typing import Union
 import eventlet
 from queue import Queue
 import socketio
+import sqlalchemy as sqla
 from pyisemail import is_email
 from constants import (ACTIVE, CHAT_PORT, OFFLINE, STATUS_UPDATE, ONLINE, NORMAL, MESSAGES_STORED, NO_MESSAGES_STORED)
 from utils import save_message, load_messages, delete_message
@@ -48,10 +49,10 @@ def receive(sid, data):
             sender_email:str = data['_from']['email']
             # update the status to online
             status_update_queue.put((sid, sender_email, ONLINE))
-            select_query:str = users_table.select().where(users_table.c.email==sender_email)
+            select_query:str = sqla.select([users_table.c.stored_messages]).where(users_table.c.email==sender_email)
             user_data:tuple = db_conn.execute(select_query).fetchone()
             # send stored messges to recipient
-            if user_data[5] == MESSAGES_STORED:
+            if user_data[0] == MESSAGES_STORED:
                 stored_messages:dict = load_messages(sender_email)
                 for file_name, data in stored_messages.items():
                     sio.sleep(0)
@@ -64,11 +65,11 @@ def receive(sid, data):
             status_update_queue.put((sid, None, OFFLINE))
     elif data['msg_type'] == NORMAL:
         # forward the message to the addressed recipient
-        select_query:str = users_table.select().where(users_table.c.email==data['to'])
+        select_query:str = sqla.select([users_table.c.activation_status, users_table.c.connection_status]).where(users_table.c.email==data['to'])
         user_data:tuple = db_conn.execute(select_query).fetchone()
         # if the recipient is online, send the message else save it
-        if user_data and user_data[8] == ACTIVE:
-            if user_data[4] == ONLINE:
+        if user_data and user_data[0] == ACTIVE:
+            if user_data[1] == ONLINE:
                 sio.emit('receive', data, namespace='/chat', room=user_data[6])
             else:
                 # save the message

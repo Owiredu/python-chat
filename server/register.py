@@ -6,6 +6,7 @@ from pyisemail import is_email
 from database import db, db_conn, users_table
 from utils import generate_activation_code
 from send_email import SendEmail
+import sqlalchemy as sqla
 from constants import (
     REGISTER_PORT, REGISTER, SUCCESS, ERROR,
     SERVER_NAME, ACTIVATION, PASSWORD_REGEX_STRING
@@ -85,13 +86,13 @@ def activate() -> None:
                     sio.emit('receive', data, namespace='/register', room=sid)
                     return
                 # updated the activation status
-                existing_session_query:str = users_table.select().where(users_table.c.sid==sid)
+                existing_session_query:str = sqla.select([users_table.c.activation_status, users_table.c.activation_code]).where(users_table.c.sid==sid)
                 existing_session:tuple = db_conn.execute(existing_session_query).fetchone()
                 # if the session exists, activate the account if not activated
                 # if the session does not exist, send activation failed message and ask for registration
                 if existing_session:
-                    if existing_session[-1] == 0: # check activation status
-                        if existing_session[-2] == activation_code: # check activation code
+                    if existing_session[0] == 0: # check activation status
+                        if existing_session[1] == activation_code: # check activation code
                             update_activation_status_query:str = users_table.update().where(users_table.c.sid==sid).values(activation_status=1)
                             db_conn.execute(update_activation_status_query)
                             # activation_thread.add_to_queue(sid, data)
@@ -152,10 +153,10 @@ def register() -> None:
                 activation_code:str = generate_activation_code()
                 # check if the email already exists before registering the user
                 # if the email already exists and is not activated replace it else send an error message
-                existing_user_query:str = users_table.select().where(users_table.c.email==email_address)
+                existing_user_query:str = sqla.select([users_table.c.activation_status]).where(users_table.c.email==email_address)
                 existing_user:tuple = db_conn.execute(existing_user_query).fetchone()
                 if existing_user:
-                    if existing_user[-1] == 0:
+                    if existing_user[0] == 0:
                         update_user_query:str = users_table.update().where(users_table.c.email==email_address).values(email=email_address, username=username, password_hash=password_hash, sid=sid, activation_code=activation_code)
                         db_conn.execute(update_user_query)
                         # registration_thread.add_to_queue(('update', sid, email_address, username, password_hash, activation_code))
