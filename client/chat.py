@@ -1,3 +1,4 @@
+from queue import Queue
 from prompt_toolkit import Application
 from prompt_toolkit.application.current import get_app
 from prompt_toolkit.layout.dimension import D
@@ -28,6 +29,7 @@ server_url = 'http://localhost:' + CHAT_PORT
 sender_message_type = NORMAL
 sender_message = ''
 messages_thread_status = MESSAGE_THREAD_DOWN
+receive_messages_queue = Queue()
 
 # track the server connection status
 server_connection_status = OFFLINE
@@ -68,6 +70,8 @@ def connect():
     if messages_thread_status == MESSAGE_THREAD_DOWN:
         # start the background activity for sending data
         sio.start_background_task(send_text_data)
+        # start backgroud task for receiving data
+        sio.start_background_task(receive_messages)
         messages_thread_status = MESSAGE_THREAD_UP
 
 
@@ -108,11 +112,7 @@ def send_text_data():
 
 @sio.event(namespace='/chat')
 def receive(data):
-    if data['_from']['username'] == SERVER_NAME:
-        # handle server messages
-        pass
-    else:
-        update_chat(data['message'], data['_from']['email'], data['_from']['username'])
+    receive_messages_queue.put(data)
 
 
 def connect_to_server():
@@ -162,6 +162,21 @@ def update_chat(new_message, email, username):
         updated_messages = existing_messages + '\n\n' + message_prefix + new_message + message_suffix
 
     chat_textarea.document = Document(text=updated_messages, cursor_position=len(updated_messages))
+
+
+def receive_messages():
+    """
+    Receives messages from the server
+    """
+    while True:
+        if not receive_messages_queue.empty():
+            data = receive_messages_queue.get()
+
+            if data['_from']['username'] == SERVER_NAME:
+                # handle server messages
+                pass
+            else:
+                update_chat(data['message'], data['_from']['email'], data['_from']['username'])
 
 
 def send_message_button_handler():
@@ -309,9 +324,10 @@ style = Style.from_dict(
     }
 )
 
-root_container = FloatContainer(content=chat_message_container, floats=[])
-layout = Layout(root_container, focused_element=message_textarea)
-app = Application(layout=layout, key_bindings=kb, full_screen=True, mouse_support=True, refresh_interval=0.11, style=style)
-app.run()
+if __name__=='__main__':
+    root_container = FloatContainer(content=chat_message_container, floats=[])
+    layout = Layout(root_container, focused_element=message_textarea)
+    app = Application(layout=layout, key_bindings=kb, full_screen=True, mouse_support=True, refresh_interval=0.11, style=style)
+    app.run()
 
 #--------------------- END CHAT FRONTEND ---------------------#

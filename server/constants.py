@@ -1,3 +1,5 @@
+import os
+
 # for connection status values
 ONLINE = 1 # signifies the the client/sender is online
 OFFLINE = 0 # signifies that the client/sender is offline
@@ -5,6 +7,10 @@ OFFLINE = 0 # signifies that the client/sender is offline
 # for account status
 ACTIVE = 1
 INACTIVE = 0
+
+# for stored message availability
+MESSAGES_STORED = 1
+NO_MESSAGES_STORED = 0
 
 # for message types
 SUCCESS = 2 # for success notifications
@@ -30,3 +36,6 @@ ACTIVATION_CODE_LENGTH = 6
 
 # maximum email sending retries
 MAX_EMAIL_RETRIES = 3
+
+# storage path
+MESSAGES_STORAGE_PATH = os.path.join(os.path.dirname(__file__), 'storage', 'messages')

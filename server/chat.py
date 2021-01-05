@@ -2,7 +2,8 @@ import eventlet
 from queue import Queue
 import socketio
 from pyisemail import is_email
-from constants import (ACTIVE, CHAT_PORT, OFFLINE, STATUS_UPDATE, ONLINE, NORMAL, ERROR, SUCCESS, SERVER_NAME)
+from constants import (ACTIVE, CHAT_PORT, OFFLINE, STATUS_UPDATE, ONLINE, NORMAL, MESSAGES_STORED, NO_MESSAGES_STORED)
+from utils import save_message, load_messages, delete_message
 from database import db_conn, users_table
 
 
@@ -16,6 +17,9 @@ num_of_clients_connected = 0
 
 # create the status update queue
 status_update_queue = Queue()
+
+# create a stored messages update queue
+stored_messages_queue = Queue()
 
 
 @sio.event(namespace='/chat')
@@ -39,21 +43,37 @@ def receive(sid, data):
     """
     if data['msg_type'] == STATUS_UPDATE:
         if data['message'] == ONLINE:
+            sender_email = data['_from']['email']
             # update the status to online
-            status_update_queue.put((sid, data['_from']['email'], ONLINE))
+            status_update_queue.put((sid, sender_email, ONLINE))
+            select_query = users_table.select().where(users_table.c.email==sender_email)
+            user_data = db_conn.execute(select_query).fetchone()
+            # send stored messges
+            if user_data[5] == MESSAGES_STORED:
+                stored_messages = load_messages(sender_email)
+                for file_name, data in stored_messages.items():
+                    sio.sleep(0)
+                    sio.emit('receive', data, namespace='/chat', room=sid)
+                    delete_message(sender_email, file_name)
+                # update the stored messages to no message stored
+                stored_messages_queue.put((sender_email, NO_MESSAGES_STORED))
         else:
             # change the user's status to offline
             status_update_queue.put((sid, None, OFFLINE))
-    if data['msg_type'] == NORMAL:
+    elif data['msg_type'] == NORMAL:
         # forward the message to the addressed recipient
-        select_sid_query = users_table.select().where(users_table.c.email==data['to'])
-        user_data = db_conn.execute(select_sid_query).fetchone()
+        select_query = users_table.select().where(users_table.c.email==data['to'])
+        user_data = db_conn.execute(select_query).fetchone()
+        # if the recipient is online, send the message else save it
         if user_data and user_data[8] == ACTIVE:
             if user_data[4] == ONLINE:
                 sio.emit('receive', data, namespace='/chat', room=user_data[6])
             else:
-                # TODO: store the message when the client is offline
-                print(data['to'], 'is offline')
+                # save the message
+                save_message(data['to'], data)
+                # update the stored messages to message stored
+                update_stored_messages_query = users_table.update().where(users_table.c.email==data['to']).values(stored_messages=MESSAGES_STORED)
+                db_conn.execute(update_stored_messages_query)
 
 
 @sio.event(namespace='/chat')
@@ -87,6 +107,21 @@ def update_connection_status():
                 else:
                     update_status_query = users_table.update().where(users_table.c.sid==sid).values(sid=None, connection_status=new_status)
                     db_conn.execute(update_status_query)
+            except Exception as e:
+                print(e)
+
+
+def update_stored_messages_status():
+    """
+    Updates the stored messages status of the user
+    """
+    while True:
+        sio.sleep(0)
+        if not stored_messages_queue.empty():
+            try:
+                email, new_status = stored_messages_queue.get()
+                update_stored_messages_query = users_table.update().where(users_table.c.email==email).values(stored_messages=new_status)
+                db_conn.execute(update_stored_messages_query)
             except Exception as e:
                 print(e)
     

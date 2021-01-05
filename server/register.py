@@ -50,7 +50,7 @@ def receive(sid, data):
         # register the client
         registration_queue.put((sid, data))
         # print(data)
-    if data['msg_type'] == ACTIVATION:
+    elif data['msg_type'] == ACTIVATION:
         # activate account
         activation_queue.put((sid, data))
 
@@ -154,8 +154,6 @@ def register():
                     if existing_user[-1] == 0:
                         update_user_query = users_table.update().where(users_table.c.email==email_address).values(email=email_address, username=username, password_hash=password_hash, sid=sid, activation_code=activation_code)
                         db_conn.execute(update_user_query)
-                        # send activation code as email
-                        mail_sender_thread.add_to_queue(email_address, activation_code)
                         # registration_thread.add_to_queue(('update', sid, email_address, username, password_hash, activation_code))
                     else:
                         data = dict(_from=SERVER_NAME, to='', message='Account already exists. Use another email', file='', msg_type=ERROR)
@@ -165,9 +163,9 @@ def register():
                     # submit the user's registration data
                     insert_user_query = users_table.insert().values(email=email_address, username=username, password_hash=password_hash, sid=sid, activation_code=activation_code)
                     db_conn.execute(insert_user_query)
-                    # send activation code as email
-                    mail_sender_thread.add_to_queue(email_address, activation_code)
                     # registration_thread.add_to_queue(('insert', sid, email_address, username, password_hash, activation_code))
+                # send activation code as email
+                mail_sender_thread.add_to_queue(email_address, activation_code)
                 # send confirmation message to user
                 data = dict(_from=SERVER_NAME, to='', message=f'Submission successful', file='', msg_type=SUCCESS)
                 sio.emit('receive', data, namespace='/register', room=sid)
