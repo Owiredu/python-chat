@@ -2,7 +2,7 @@ from cryptography.fernet import Fernet
 
 
 # generate the encryption key
-key:bytes = b'hMyTZCFKIlYO-7cBsJXhdYTuQPsHfuIBcdoQBXYMiFk='
+key:bytes = b'LXLzB9pYXLU_ZQhn84v9iw169e_HhzMUOJjojPsAstw='
 
 
 class FileEncrypter:

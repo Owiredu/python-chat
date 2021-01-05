@@ -15,36 +15,36 @@ class SendEmail(Thread):
 
     def __init__(self):
         super().__init__(daemon=True)
-        self.sender_email = "schat.app@yahoo.com"
-        self.sender_password = "owhqpqqllvgimobz"
-        self.sender_name = 'sChat'
-        self.subject = 'Account Activation Code'
-        self.recipient_email = ''
-        self.activation_code = ''
-        self.retries_count = 0
-        self.email_queue = Queue()
-        self.stop = False
+        self.sender_email:str = "schat.app@yahoo.com"
+        self.sender_password:str = "owhqpqqllvgimobz"
+        self.sender_name:str = 'sChat'
+        self.subject:str = 'Account Activation Code'
+        self.recipient_email:str = ''
+        self.activation_code:str = ''
+        self.retries_count:int = 0
+        self.email_queue:Queue = Queue()
+        self.stop:bool = False
 
-    def add_to_queue(self, email_address, activation_code):
+    def add_to_queue(self, email_address:str, activation_code:str) -> None:
         """
         Adds message to the queue
         """
         self.email_queue.put((email_address, activation_code))
 
-    def send_email(self):
+    def send_email(self) -> None:
         """
         Sends the email
         """
         try:
             # create message
-            msg = MIMEMultipart("alternative")
+            msg:MIMEMultipart = MIMEMultipart("alternative")
             msg["Subject"] = self.subject
             msg["From"] = formataddr((self.sender_name, self.sender_email))
             msg["To"] = self.recipient_email
-            content = f'<html><h1><strong>ACTIVATION CODE: <span style="color: green">{self.activation_code}</span> </strong></h1>'
+            content:str = f'<html><h1><strong>ACTIVATION CODE: <span style="color: green">{self.activation_code}</span> </strong></h1>'
             msg.attach(MIMEText(content, 'html'))  
             # connect to mail server and login
-            smtp = smtplib.SMTP_SSL('smtp.mail.yahoo.com', 465)
+            smtp:smtplib.SMTP_SSL = smtplib.SMTP_SSL('smtp.mail.yahoo.com', 465)
             smtp.ehlo()
             smtp.login(self.sender_email, self.sender_password)
             # send the message
@@ -64,9 +64,9 @@ class SendEmail(Thread):
         """
         while not self.stop:
             if not self.email_queue.empty():
-                queue_data = self.email_queue.get()
-                self.recipient_email = queue_data[0]
-                self.activation_code = queue_data[1]
+                queue_data:tuple = self.email_queue.get()
+                self.recipient_email:str = queue_data[0]
+                self.activation_code:str = queue_data[1]
                 self.send_email()
             
 
