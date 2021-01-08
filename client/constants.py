@@ -45,4 +45,7 @@ LOCAL_CHAT_HISTORY_DB_FILE_PREFIX:str = 'chat_db'
 LOCAL_DB_EXTENSION:str = '.db'
 
 # local chat history db template path
-LOCAL_CHAT_HISTORY_DB_TEMPLATE_PATH:str = os.path.join(DATA_STORAGE_PATH, 'chat_history_db_template' + LOCAL_DB_EXTENSION)
+LOCAL_CHAT_HISTORY_DB_TEMPLATE_PATH:str = os.path.join(os.path.dirname(__file__), 'resources', 'chat_history_db_template' + LOCAL_DB_EXTENSION)
+
+# maximum history database size in megabytes (MB)
+MAXIMUM_CHAT_HISTORY_DB_SIZE = 50

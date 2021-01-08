@@ -17,5 +17,6 @@
             "username": "chat_server",
             "password": "password_server"
         }
-    ]
+    ],
+    "python.pythonPath": "venv\\Scripts\\python.exe"
 }

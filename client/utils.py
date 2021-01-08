@@ -36,9 +36,10 @@ def current_chat_db_name() -> str:
     """
     os.makedirs(LOCAL_CHAT_HISTORY_DB_PATH, exist_ok=True)
     sorted_db_names:list = sorted(os.listdir(LOCAL_CHAT_HISTORY_DB_PATH), key=lambda name: int(name.split('.')[0].replace(LOCAL_CHAT_HISTORY_DB_FILE_PREFIX, '')))
+    db_name:str = f'{LOCAL_CHAT_HISTORY_DB_FILE_PREFIX}0{LOCAL_DB_EXTENSION}'
     if len(sorted_db_names) > 0:
-        return sorted_db_names[-1]
-    return ''
+        db_name = sorted_db_names[-1]
+    return db_name
 
 
 def next_chat_db_name() -> str:
@@ -58,4 +59,6 @@ def create_next_chat_db(db_name:str) -> None:
     """
     Creates the next local chat database
     """
-    shutil.copyfile(LOCAL_CHAT_HISTORY_DB_TEMPLATE_PATH, db_name)
+    new_db_path = os.path.join(LOCAL_CHAT_HISTORY_DB_PATH, db_name)
+    if not os.path.exists(new_db_path):
+        shutil.copyfile(LOCAL_CHAT_HISTORY_DB_TEMPLATE_PATH, new_db_path)
