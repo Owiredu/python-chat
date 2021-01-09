@@ -57,6 +57,8 @@ class SendEmail(Thread):
                 self.retries_count += 1
                 time.sleep(5)
                 self.send_email()
+            else:
+                self.retries_count = 0
 
     def run(self):
         """
